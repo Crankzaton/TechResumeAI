@@ -28,6 +28,7 @@ export async function POST(request: Request, { params }: Params) {
       previewUrl: `/preview/${result.resume.id}`,
       technology: result.resume.technologyName,
       layout: result.resume.layout,
+      designTemplate: result.resume.designTemplate || "classic",
       emailSent: result.emailSent,
       emailError: result.emailError,
       emailPreview: result.emailPreview,
