@@ -205,19 +205,20 @@
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  background: var(--sn-teal);
+  background: #6fa894;
   color: #fff;
-  padding: 6px 10px;
+  padding: 7px 10px;
 }
 
 .sn-card-header-edu {
-  background: var(--sn-card-head);
+  background: #032d42;
 }
 
 .sn-card-header h2 {
   margin: 0;
   font-size: 12px;
   font-weight: 700;
+  color: #fff;
 }
 
 .sn-date {
@@ -231,11 +232,17 @@
 }
 
 .sn-card-body {
-  background: var(--sn-card-body);
+  background: #d9d9d9;
   color: #111;
   padding: 8px 12px 10px;
   font-size: 11px;
   line-height: 1.35;
+}
+
+.sn-card-body strong,
+.sn-card-body li,
+.sn-card-body p {
+  color: #111;
 }
 
 .sn-card-body ul {
