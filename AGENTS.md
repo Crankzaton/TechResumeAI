@@ -18,6 +18,7 @@ Only one process is required for local development.
 
 - Activate the venv before running commands: `source .venv/bin/activate`
 - Install deps: `pip install -r requirements-dev.txt && pip install -e .`
+- If `python3 -m venv` fails with "ensurepip is not available", install the system package once: `sudo apt-get install -y python3.12-venv`
 - No database, Docker, or external services are required for the current stub implementation.
 
 ### Lint and test
