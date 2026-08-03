@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TechResumeAI</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+        line-height: 1.5;
+      }
+      body {
+        max-width: 42rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      textarea {
+        width: 100%;
+        min-height: 6rem;
+        padding: 0.75rem;
+        font: inherit;
+      }
+      button {
+        margin-top: 0.75rem;
+        padding: 0.5rem 1rem;
+        font: inherit;
+        cursor: pointer;
+      }
+      #result {
+        margin-top: 1rem;
+        padding: 0.75rem;
+        border: 1px solid #8884;
+        border-radius: 4px;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>TechResumeAI</h1>
+    <p>Paste a rough resume bullet and get a polished version (local stub — no API key required).</p>
+    <label for="bullet">Resume bullet</label>
+    <textarea id="bullet" placeholder="built a web app with react"></textarea>
+    <button type="button" id="enhance">Enhance</button>
+    <div id="result" hidden></div>
+    <script>
+      const bullet = document.getElementById("bullet");
+      const result = document.getElementById("result");
+      document.getElementById("enhance").addEventListener("click", async () => {
+        const text = bullet.value.trim();
+        if (!text) return;
+        const res = await fetch("/api/resume/enhance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bullet: text }),
+        });
+        const data = await res.json();
+        result.hidden = false;
+        result.textContent = data.enhanced;
+      });
+    </script>
+  </body>
+</html>
