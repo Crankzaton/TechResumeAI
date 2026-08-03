@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import type { ResumeData, ResumeSectionConfig } from "@/lib/types";
 import {
   duplicateSection,
   insertSpacerAfter,
   moveSection,
+  moveSectionTo,
   sectionLabel,
 } from "@/lib/resume-sections";
 
@@ -24,6 +26,8 @@ export function SectionEditorPanel({
   onResumePatch: (patch: Partial<ResumeData>) => void;
 }) {
   const selected = sections.find((s) => s.id === selectedId) || null;
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
 
   function updateSelected(patch: Partial<ResumeSectionConfig>) {
     if (!selected) return;
@@ -48,15 +52,31 @@ export function SectionEditorPanel({
   function addSpacer() {
     const next = insertSpacerAfter(sections, selectedId, 28);
     onChange(next);
-    const created = next.find((s) => s.kind === "spacer" && !sections.some((o) => o.id === s.id));
+    const created = next.find(
+      (s) => s.kind === "spacer" && !sections.some((o) => o.id === s.id),
+    );
     if (created) onSelect(created.id);
+  }
+
+  function onDropOn(targetId: string) {
+    if (!dragId || dragId === targetId) {
+      setDragId(null);
+      setOverId(null);
+      return;
+    }
+    const toIndex = sections.findIndex((s) => s.id === targetId);
+    if (toIndex < 0) return;
+    onChange(moveSectionTo(sections, dragId, toIndex));
+    onSelect(dragId);
+    setDragId(null);
+    setOverId(null);
   }
 
   return (
     <aside className="section-editor no-print">
       <div className="section-editor-head">
         <h3>Sections</h3>
-        <div style={{ display: "flex", gap: "0.35rem" }}>
+        <div className="section-editor-add">
           <button type="button" className="ghost-btn" onClick={addSpacer}>
             + Spacer
           </button>
@@ -65,22 +85,67 @@ export function SectionEditorPanel({
           </button>
         </div>
       </div>
-      <p className="intake-hint" style={{ marginBottom: "0.6rem" }}>
-        Click a block on the resume to rename it live. Add spacers between
-        sections. Move / duplicate / hide from here.
+      <p className="intake-hint section-editor-hint">
+        Drag any row to place it anywhere. Spacers are edit-only and never print.
       </p>
       <ul className="section-list">
-        {sections.map((s) => (
-          <li key={s.id} className={s.id === selectedId ? "active" : ""}>
-            <button type="button" onClick={() => onSelect(s.id)}>
-              <span>{s.visible ? "●" : "○"}</span>
-              {s.kind === "spacer"
-                ? `Spacer (${s.spacerSize || 24}px)`
-                : s.title}
-              <em>{sectionLabel(s.kind)}</em>
-            </button>
-          </li>
-        ))}
+        {sections.map((s, index) => {
+          const label = sectionLabel(s.kind);
+          const showKindHint =
+            s.kind !== "spacer" &&
+            s.title.trim().toLowerCase() !== label.toLowerCase();
+          return (
+            <li
+              key={s.id}
+              className={[
+                s.id === selectedId ? "active" : "",
+                dragId === s.id ? "is-dragging" : "",
+                overId === s.id ? "is-drop-target" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              draggable
+              onDragStart={(e) => {
+                setDragId(s.id);
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", s.id);
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (overId !== s.id) setOverId(s.id);
+              }}
+              onDragLeave={() => {
+                if (overId === s.id) setOverId(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                onDropOn(s.id);
+              }}
+              onDragEnd={() => {
+                setDragId(null);
+                setOverId(null);
+              }}
+            >
+              <button type="button" onClick={() => onSelect(s.id)}>
+                <span className="section-drag" aria-hidden>
+                  ⋮⋮
+                </span>
+                <span className="section-vis" aria-hidden>
+                  {s.visible ? "●" : "○"}
+                </span>
+                <span className="section-list-title">
+                  {s.kind === "spacer"
+                    ? `Spacer · ${s.spacerSize || 24}px`
+                    : s.title}
+                </span>
+                <span className="section-list-meta">
+                  #{index + 1}
+                  {showKindHint ? ` · ${label}` : ""}
+                </span>
+              </button>
+            </li>
+          );
+        })}
       </ul>
 
       {selected && (
@@ -96,12 +161,13 @@ export function SectionEditorPanel({
           )}
 
           {selected.kind === "spacer" && (
-            <label>
-              Spacer height (px)
+            <label className="range-field">
+              Spacer height ({selected.spacerSize || 24}px) — not printed
               <input
-                type="number"
+                type="range"
                 min={8}
                 max={120}
+                step={2}
                 value={selected.spacerSize || 24}
                 onChange={(e) =>
                   updateSelected({
@@ -196,7 +262,9 @@ export function SectionEditorPanel({
                 rows={8}
                 value={serializeExperience(resume)}
                 onChange={(e) =>
-                  onResumePatch({ workExperience: parseExperience(e.target.value) })
+                  onResumePatch({
+                    workExperience: parseExperience(e.target.value),
+                  })
                 }
               />
             </label>
@@ -221,14 +289,14 @@ export function SectionEditorPanel({
               className="ghost-btn"
               onClick={() => onChange(moveSection(sections, selected.id, -1))}
             >
-              ↑ Move
+              ↑ Up
             </button>
             <button
               type="button"
               className="ghost-btn"
               onClick={() => onChange(moveSection(sections, selected.id, 1))}
             >
-              ↓ Move
+              ↓ Down
             </button>
             <button
               type="button"

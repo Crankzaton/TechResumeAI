@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { getResume, updateResume } from "@/lib/storage";
 import { enhanceResumeContent } from "@/lib/ai-enhance";
-import { nextLayout } from "@/lib/design-variants";
 import { layoutAccentPalette } from "@/lib/design-variants";
 
 type Params = { params: Promise<{ id: string }> };
 
-/** POST /api/resumes/:id/enhance — AI rewrite + structural redesign */
+/** POST /api/resumes/:id/enhance — full AI template redesign from intake details */
 export async function POST(_request: Request, { params }: Params) {
   const { id } = await params;
   const existing = await getResume(id);
@@ -16,21 +15,20 @@ export async function POST(_request: Request, { params }: Params) {
 
   try {
     const { patch, summary } = enhanceResumeContent(existing);
-    const layout = nextLayout(
-      existing.layout,
-      existing.previousLayouts || [],
+    const layout = patch.layout || existing.layout;
+    const themeColors = layoutAccentPalette(
+      layout,
+      existing.themeColors,
     );
-    const themeColors = layoutAccentPalette(layout, existing.themeColors);
 
     const updated = await updateResume(existing.id, {
       ...patch,
       layout,
       themeColors,
-      chipStyle: "soft",
-      chipColors: undefined,
-      previousLayouts: [...(existing.previousLayouts || []), existing.layout].slice(
-        -8,
-      ),
+      previousLayouts: [
+        ...(existing.previousLayouts || []),
+        existing.layout,
+      ].slice(-8),
       previousTemplates: [
         ...(existing.previousTemplates || []),
         existing.designTemplate || "classic",

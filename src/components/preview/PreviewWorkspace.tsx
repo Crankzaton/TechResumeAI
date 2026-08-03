@@ -245,7 +245,11 @@ export function PreviewWorkspace({
         if (next.layout) setLayout(next.layout);
         setChipStyle(next.chipStyle || "soft");
         setChipColors(next.chipColors || { background: "", text: "" });
+        if (next.styleSettings) {
+          setStyleSettings(ensureStyleSettings(next));
+        }
         setVariantIndex((v) => v + 1);
+        setPanels({ sections: true, preview: true, controls: true });
         setMsg(
           data.message ||
             `AI enhanced → ${templateMeta(next.designTemplate).name}`,
@@ -270,6 +274,17 @@ export function PreviewWorkspace({
       ...r,
       sectionLayout: ensureSectionLayout(r).map((s) =>
         s.id === id ? { ...s, title } : s,
+      ),
+    }));
+  }
+
+  function setSpacerSize(id: string, size: number) {
+    setResume((r) => ({
+      ...r,
+      sectionLayout: ensureSectionLayout(r).map((s) =>
+        s.id === id
+          ? { ...s, spacerSize: Math.max(8, Math.min(120, size)) }
+          : s,
       ),
     }));
   }
@@ -418,73 +433,99 @@ export function PreviewWorkspace({
       </header>
 
       <div className="preview-action-bar no-print">
-        <button
-          type="button"
-          className="ghost-btn"
-          disabled={pending}
-          onClick={downloadPdf}
-        >
-          Download PDF
-        </button>
-        <button
-          type="button"
-          className="ghost-btn"
-          disabled={pending}
-          onClick={emailPdf}
-        >
-          Email PDF
-        </button>
-        <button
-          type="button"
-          className={editMode ? "primary-btn" : "ghost-btn"}
-          onClick={() => setEditMode((v) => !v)}
-        >
-          {editMode ? "Editing on" : "Edit sections"}
-        </button>
-        <button
-          type="button"
-          className="primary-btn"
-          disabled={pending}
-          onClick={enhanceWithAi}
-        >
-          {pending ? "Enhancing…" : "Enhance using AI"}
-        </button>
-        <button
-          type="button"
-          className="ghost-btn"
-          disabled={pending}
-          onClick={markDelivered}
-        >
-          Mark delivered
-        </button>
-        <span className="panel-toggles">
+        <div className="action-group" aria-label="Export">
+          <span className="action-group-label">Export</span>
+          <button
+            type="button"
+            className="ghost-btn"
+            disabled={pending}
+            onClick={downloadPdf}
+          >
+            Download PDF
+          </button>
+          <button
+            type="button"
+            className="ghost-btn"
+            disabled={pending}
+            onClick={emailPdf}
+          >
+            Email PDF
+          </button>
+        </div>
+
+        <div className="action-group" aria-label="Compose">
+          <span className="action-group-label">Compose</span>
+          <button
+            type="button"
+            className={editMode ? "primary-btn" : "ghost-btn"}
+            onClick={() => {
+              setEditMode((v) => !v);
+              if (!editMode) setPanels((p) => ({ ...p, sections: true }));
+            }}
+          >
+            {editMode ? "Editing on" : "Edit sections"}
+          </button>
+          <button
+            type="button"
+            className="primary-btn"
+            disabled={pending}
+            onClick={enhanceWithAi}
+            title="AI takes your details and builds a full polished template"
+          >
+            {pending ? "Enhancing…" : "Enhance with AI"}
+          </button>
+          <button
+            type="button"
+            className="ghost-btn"
+            disabled={pending}
+            onClick={redesign}
+          >
+            Redesign
+          </button>
+          <button
+            type="button"
+            className="ghost-btn"
+            disabled={pending}
+            onClick={saveRedesign}
+          >
+            Save design
+          </button>
+        </div>
+
+        <div className="action-group" aria-label="Workspace">
+          <span className="action-group-label">Panels</span>
           <button
             type="button"
             className={`ghost-btn${panels.sections ? " is-on" : ""}`}
             onClick={() => togglePanel("sections")}
-            title="Minimize/maximize sections panel"
           >
-            {panels.sections ? "Sections −" : "Sections +"}
+            {panels.sections ? "Sections" : "Sections +"}
           </button>
           <button
             type="button"
             className={`ghost-btn${panels.controls ? " is-on" : ""}`}
             onClick={() => togglePanel("controls")}
-            title="Minimize/maximize design controls"
           >
-            {panels.controls ? "Controls −" : "Controls +"}
+            {panels.controls ? "Design" : "Design +"}
           </button>
-          <button
-            type="button"
-            className="ghost-btn"
-            onClick={maximizePreview}
-          >
+          <button type="button" className="ghost-btn" onClick={maximizePreview}>
             Max preview
           </button>
           <button type="button" className="ghost-btn" onClick={resetPanels}>
-            Reset layout
+            Reset panels
           </button>
-        </span>
+        </div>
+
+        <div className="action-group action-group-end" aria-label="Status">
+          <button
+            type="button"
+            className="ghost-btn"
+            disabled={pending}
+            onClick={markDelivered}
+          >
+            Mark delivered
+          </button>
+        </div>
       </div>
 
       <div className={shellClass}>
@@ -529,12 +570,16 @@ export function PreviewWorkspace({
                 <ResumeRenderer
                   data={liveResume}
                   handlers={
-                    editMode && panels.sections
+                    editMode
                       ? {
                           editMode: true,
                           selectedId: selectedSection,
-                          onSelect: setSelectedSection,
+                          onSelect: (id) => {
+                            setSelectedSection(id);
+                            setPanels((p) => ({ ...p, sections: true }));
+                          },
                           onRename: renameSection,
+                          onSpacerSize: setSpacerSize,
                         }
                       : undefined
                   }
@@ -558,8 +603,8 @@ export function PreviewWorkspace({
             </div>
             <div className="redesign-box">
               <p className="intake-hint redesign-hint">
-                Redesign switches structure. Tag style controls skill/chip
-                backgrounds (fixes white boxes on dark themes).
+                Template and accent change structure and color. Tag style fixes
+                chip backgrounds on dark themes. Redesign / Save live in the top bar.
               </p>
               <div className="field-grid redesign-fields">
                 <label>
@@ -818,24 +863,10 @@ export function PreviewWorkspace({
                   </label>
                 ) : null}
               </div>
-              <div className="preview-action-row">
-                <button
-                  type="button"
-                  className="primary-btn"
-                  disabled={pending}
-                  onClick={redesign}
-                >
-                  Redesign
-                </button>
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={pending}
-                  onClick={saveRedesign}
-                >
-                  Save this design
-                </button>
-              </div>
+              <p className="intake-hint redesign-hint">
+                Use <strong>Redesign</strong> / <strong>Save design</strong> in
+                the top bar. This panel tunes palette, type, and tags.
+              </p>
             </div>
           </aside>
         ) : (

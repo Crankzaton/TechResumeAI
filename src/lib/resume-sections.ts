@@ -148,6 +148,21 @@ export function moveSection(
   return copy;
 }
 
+/** Drop `id` so it sits at `toIndex` (0-based) after removal. */
+export function moveSectionTo(
+  list: ResumeSectionConfig[],
+  id: string,
+  toIndex: number,
+): ResumeSectionConfig[] {
+  const from = list.findIndex((s) => s.id === id);
+  if (from < 0) return list;
+  const copy = [...list];
+  const [item] = copy.splice(from, 1);
+  const clamped = Math.max(0, Math.min(toIndex, copy.length));
+  copy.splice(clamped, 0, item);
+  return copy;
+}
+
 export function duplicateSection(
   list: ResumeSectionConfig[],
   id: string,

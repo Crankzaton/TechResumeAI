@@ -557,6 +557,64 @@ textarea {
   height: 140px;
 }
 
+.preview-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 0.75rem;
+  margin-bottom: 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.82);
+  position: sticky;
+  top: 64px;
+  z-index: 5;
+  align-items: stretch;
+}
+
+.action-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.45rem 0.2rem 0.35rem;
+  border-right: 1px solid var(--line);
+}
+
+.action-group:last-child,
+.action-group-end {
+  border-right: none;
+  margin-left: auto;
+  padding-right: 0;
+}
+
+.action-group-label {
+  display: block;
+  width: 100%;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--steel);
+  margin: 0 0 0.15rem 0.15rem;
+}
+
+.action-group .ghost-btn,
+.action-group .primary-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.82rem;
+  border-radius: 10px;
+  line-height: 1.2;
+  min-height: 2.05rem;
+}
+
+.action-group .ghost-btn.is-on {
+  border-color: var(--moss);
+  background: rgba(31, 111, 91, 0.12);
+}
+
 .panel-toggles {
   display: inline-flex;
   flex-wrap: wrap;
@@ -585,21 +643,6 @@ textarea {
   border: 1px solid var(--line);
   background: #fff;
   cursor: pointer;
-}
-
-.preview-action-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  margin-bottom: 0.75rem;
-  padding: 0.55rem 0.65rem;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.72);
-  position: sticky;
-  top: 64px;
-  z-index: 5;
-  align-items: center;
 }
 
 .preview-side-controls {
@@ -1099,6 +1142,23 @@ textarea {
     top: 0;
   }
 
+  .action-group {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    width: 100%;
+    padding: 0.35rem 0;
+  }
+
+  .action-group-end {
+    margin-left: 0;
+  }
+
+  .action-group-label {
+    width: auto;
+    display: inline;
+    margin-right: 0.5rem;
+  }
+
   .chip-color-row {
     grid-template-columns: 1fr 1fr;
   }
@@ -1185,14 +1245,49 @@ textarea {
   width: 100%;
   text-align: left;
   display: grid;
-  grid-template-columns: 14px 1fr;
-  gap: 0 0.45rem;
+  grid-template-columns: 18px 14px 1fr auto;
+  gap: 0 0.4rem;
+  align-items: center;
   border: 1px solid transparent;
   background: rgba(12, 18, 32, 0.03);
   border-radius: 10px;
   padding: 0.45rem 0.55rem;
-  cursor: pointer;
+  cursor: grab;
   font: inherit;
+}
+
+.section-list li.is-dragging button {
+  opacity: 0.45;
+}
+
+.section-list li.is-drop-target button {
+  border-color: var(--moss);
+  box-shadow: inset 0 0 0 1px rgba(31, 111, 91, 0.35);
+}
+
+.section-drag {
+  color: var(--steel);
+  font-size: 0.7rem;
+  letter-spacing: -0.08em;
+  user-select: none;
+}
+
+.section-vis {
+  font-size: 0.7rem;
+}
+
+.section-list-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.section-list-meta {
+  font-size: 0.7rem;
+  color: var(--steel);
+  white-space: nowrap;
 }
 
 .section-list li button em {
@@ -1205,6 +1300,15 @@ textarea {
 .section-list li.active button {
   border-color: var(--moss);
   background: rgba(31, 111, 91, 0.1);
+}
+
+.section-editor-add {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.section-editor-hint {
+  margin-bottom: 0.6rem;
 }
 
 .section-detail {
