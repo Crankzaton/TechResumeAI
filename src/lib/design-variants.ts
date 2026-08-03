@@ -58,11 +58,11 @@ export function layoutAccentPalette(
         background: "#032d60",
         surface: "#014486",
         accent: "#1b96ff",
-        accentText: "#ffffff",
+        accentText: "#032d60",
         text: "#f4f6f9",
         muted: "#b0c4de",
         cardHeader: "#0176d3",
-        cardBody: "#eef4ff",
+        cardBody: "#0b3a6e",
         sidebar: "#023248",
       };
     case "console-dark":
@@ -74,7 +74,7 @@ export function layoutAccentPalette(
         text: "#fafafa",
         muted: "#d5dbdb",
         cardHeader: "#ec7211",
-        cardBody: "#eaeded",
+        cardBody: "#2d3744",
         sidebar: "#0f141a",
       };
     case "portal-light":
@@ -110,7 +110,7 @@ export function layoutAccentPalette(
         text: "#e5e7eb",
         muted: "#9ca3af",
         cardHeader: "#065f46",
-        cardBody: "#d1fae5",
+        cardBody: "#1a2332",
         sidebar: "#030712",
       };
     case "platform-dark":

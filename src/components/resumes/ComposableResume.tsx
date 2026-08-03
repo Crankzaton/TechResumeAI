@@ -40,14 +40,16 @@ export function ComposableResume({
   const sections = ensureSectionLayout(data).filter((s) => s.visible);
   const skin = data.designTemplate || "classic";
   const layout = data.layout || "platform-dark";
+  const chipStyle = data.chipStyle || "soft";
   const ctx: Ctx = { data, metrics, handlers, sections };
 
   return (
     <article
-      className={`tpl composable proprietary skin-${skin} layout-${layout} structure-${skin}`}
+      className={`tpl composable proprietary skin-${skin} layout-${layout} structure-${skin} chip-${chipStyle}`}
       style={themeVars(data)}
       data-template={skin}
       data-layout={layout}
+      data-chip={chipStyle}
     >
       <div className="composable-motif" aria-hidden>
         <MotifCanvas

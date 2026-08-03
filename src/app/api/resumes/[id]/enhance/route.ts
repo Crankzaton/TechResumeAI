@@ -26,6 +26,8 @@ export async function POST(_request: Request, { params }: Params) {
       ...patch,
       layout,
       themeColors,
+      chipStyle: "soft",
+      chipColors: undefined,
       previousLayouts: [...(existing.previousLayouts || []), existing.layout].slice(
         -8,
       ),

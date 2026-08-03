@@ -1,9 +1,57 @@
 import type { CSSProperties } from "react";
-import type { ResumeData } from "@/lib/types";
+import type { ChipStyle, ResumeData } from "@/lib/types";
 import { buildDesignDna, techMonogram } from "@/lib/design-dna";
 
 export function allCerts(data: ResumeData) {
   return data.certifications.map((c) => c.name);
+}
+
+function chipVars(
+  style: ChipStyle | undefined,
+  c: ResumeData["themeColors"],
+  override?: ResumeData["chipColors"],
+): Record<string, string> {
+  if (override?.background || override?.text) {
+    return {
+      ["--r-chip-bg"]: override.background || c.surface,
+      ["--r-chip-text"]: override.text || c.text,
+    };
+  }
+  const mode = style || "soft";
+  if (mode === "accent") {
+    return {
+      ["--r-chip-bg"]: c.accent,
+      ["--r-chip-text"]: c.accentText,
+    };
+  }
+  if (mode === "outline") {
+    return {
+      ["--r-chip-bg"]: "transparent",
+      ["--r-chip-text"]: c.text,
+    };
+  }
+  if (mode === "contrast") {
+    return {
+      ["--r-chip-bg"]: c.cardBody,
+      ["--r-chip-text"]: isLight(c.cardBody) ? "#111827" : c.text,
+    };
+  }
+  // soft — theme-aware, never harsh white on dark
+  return {
+    ["--r-chip-bg"]: isLight(c.background)
+      ? c.cardBody
+      : `color-mix(in srgb, ${c.surface} 70%, ${c.accent} 30%)`,
+    ["--r-chip-text"]: c.text,
+  };
+}
+
+function isLight(hex: string) {
+  const h = (hex || "").replace("#", "");
+  if (h.length < 6) return false;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 180;
 }
 
 export function themeVars(data: ResumeData): CSSProperties {
@@ -22,6 +70,7 @@ export function themeVars(data: ResumeData): CSSProperties {
     ["--dna-angle" as string]: `${dna.angle}deg`,
     ["--dna-skew" as string]: `${dna.latticeSkew}deg`,
     ["--dna-band" as string]: `${dna.bandOffset}px`,
+    ...chipVars(data.chipStyle, c, data.chipColors),
   };
 }
 

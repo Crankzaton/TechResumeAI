@@ -6,6 +6,9 @@ export type DesignTemplateId =
   | "atelier"
   | "pulse";
 
+/** How skill/tool tags render — avoids accidental white boxes on dark themes */
+export type ChipStyle = "soft" | "accent" | "outline" | "contrast";
+
 export type LayoutStyle =
   | "platform-dark"
   | "cloud-blue"
@@ -177,6 +180,9 @@ export interface ResumeData {
   technologyName: string;
   layout: LayoutStyle;
   designTemplate?: DesignTemplateId;
+  chipStyle?: ChipStyle;
+  /** Optional override for skill/tool tag colors */
+  chipColors?: { background: string; text: string };
   themeColors: Technology["colors"];
   formConnectionId?: string;
   fullName: string;

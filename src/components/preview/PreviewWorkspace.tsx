@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ResumeRenderer } from "@/components/resumes/ResumeRenderer";
 import { SectionEditorPanel } from "@/components/preview/SectionEditorPanel";
@@ -14,6 +14,7 @@ import {
 import { pickContrastingTemplate } from "@/lib/ai-enhance";
 import { ensureSectionLayout } from "@/lib/resume-sections";
 import type {
+  ChipStyle,
   DesignTemplateId,
   LayoutStyle,
   ResumeData,
@@ -22,6 +23,13 @@ import type {
 } from "@/lib/types";
 
 const OTHER = "__other__";
+const CHIP_STYLES: { id: ChipStyle; label: string }[] = [
+  { id: "soft", label: "Soft (theme-safe)" },
+  { id: "accent", label: "Accent fill" },
+  { id: "outline", label: "Outline" },
+  { id: "contrast", label: "High contrast" },
+];
+const PANEL_KEY = "techresume-preview-panels-v1";
 
 function templateMeta(id?: DesignTemplateId) {
   return (
@@ -43,6 +51,31 @@ export function PreviewWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(true);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
+  const [chipStyle, setChipStyle] = useState<ChipStyle>(
+    initial.chipStyle || "soft",
+  );
+  const [chipColors, setChipColors] = useState(
+    initial.chipColors || { background: "", text: "" },
+  );
+  const [panels, setPanels] = useState({
+    sections: true,
+    preview: true,
+    controls: true,
+  });
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PANEL_KEY);
+      if (raw) setPanels({ ...panels, ...JSON.parse(raw) });
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(PANEL_KEY, JSON.stringify(panels));
+  }, [panels]);
 
   const initialTech =
     technologies.find(
@@ -88,6 +121,14 @@ export function PreviewWorkspace({
           : selectedTech?.name || resume.technologyName,
       layout,
       designTemplate,
+      chipStyle,
+      chipColors:
+        chipColors.background || chipColors.text
+          ? {
+              background: chipColors.background || colors.surface,
+              text: chipColors.text || colors.text,
+            }
+          : undefined,
       themeColors: colors,
       sectionLayout: ensureSectionLayout(resume),
     };
@@ -98,6 +139,8 @@ export function PreviewWorkspace({
     otherName,
     layout,
     designTemplate,
+    chipStyle,
+    chipColors,
     variantIndex,
     technologies,
   ]);
@@ -110,6 +153,8 @@ export function PreviewWorkspace({
       technologyName: liveResume.technologyName,
       layout: liveResume.layout,
       designTemplate: liveResume.designTemplate,
+      chipStyle: liveResume.chipStyle,
+      chipColors: liveResume.chipColors,
       themeColors: liveResume.themeColors,
       sectionLayout: liveResume.sectionLayout,
       fullName: liveResume.fullName,
@@ -182,6 +227,8 @@ export function PreviewWorkspace({
         setResume({ ...next, sectionLayout: ensureSectionLayout(next) });
         if (next.designTemplate) setDesignTemplate(next.designTemplate);
         if (next.layout) setLayout(next.layout);
+        setChipStyle(next.chipStyle || "soft");
+        setChipColors(next.chipColors || { background: "", text: "" });
         setVariantIndex((v) => v + 1);
         setMsg(
           data.message ||
@@ -278,6 +325,25 @@ export function PreviewWorkspace({
     });
   }
 
+  function togglePanel(key: keyof typeof panels) {
+    setPanels((p) => {
+      const next = { ...p, [key]: !p[key] };
+      // Keep at least the preview visible
+      if (!next.preview && !next.sections && !next.controls) {
+        return { ...next, preview: true };
+      }
+      return next;
+    });
+  }
+
+  function maximizePreview() {
+    setPanels({ sections: false, preview: true, controls: false });
+  }
+
+  function resetPanels() {
+    setPanels({ sections: true, preview: true, controls: true });
+  }
+
   function markDelivered() {
     startTransition(async () => {
       await fetch(`/api/resumes/${resume.id}`, {
@@ -288,6 +354,15 @@ export function PreviewWorkspace({
       router.refresh();
     });
   }
+
+  const shellClass = [
+    "preview-shell",
+    panels.sections ? "" : "hide-sections",
+    panels.controls ? "" : "hide-controls",
+    panels.preview ? "" : "hide-preview",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div className="preview-workspace no-print-parent">
@@ -313,67 +388,119 @@ export function PreviewWorkspace({
         </div>
       </header>
 
-      <div className="preview-shell">
-        <div className="preview-main-col">
-          <div className="preview-action-bar no-print">
-            <button
-              type="button"
-              className="ghost-btn"
-              disabled={pending}
-              onClick={downloadPdf}
-            >
-              Download PDF
-            </button>
-            <button
-              type="button"
-              className="ghost-btn"
-              disabled={pending}
-              onClick={emailPdf}
-            >
-              Email PDF
-            </button>
-            <button
-              type="button"
-              className={editMode ? "primary-btn" : "ghost-btn"}
-              onClick={() => setEditMode((v) => !v)}
-            >
-              {editMode ? "Editing on" : "Edit sections"}
-            </button>
-            <button
-              type="button"
-              className="primary-btn"
-              disabled={pending}
-              onClick={enhanceWithAi}
-            >
-              {pending ? "Enhancing…" : "Enhance using AI"}
-            </button>
-            <button
-              type="button"
-              className="ghost-btn"
-              disabled={pending}
-              onClick={markDelivered}
-            >
-              Mark delivered
-            </button>
-          </div>
+      <div className="preview-action-bar no-print">
+        <button
+          type="button"
+          className="ghost-btn"
+          disabled={pending}
+          onClick={downloadPdf}
+        >
+          Download PDF
+        </button>
+        <button
+          type="button"
+          className="ghost-btn"
+          disabled={pending}
+          onClick={emailPdf}
+        >
+          Email PDF
+        </button>
+        <button
+          type="button"
+          className={editMode ? "primary-btn" : "ghost-btn"}
+          onClick={() => setEditMode((v) => !v)}
+        >
+          {editMode ? "Editing on" : "Edit sections"}
+        </button>
+        <button
+          type="button"
+          className="primary-btn"
+          disabled={pending}
+          onClick={enhanceWithAi}
+        >
+          {pending ? "Enhancing…" : "Enhance using AI"}
+        </button>
+        <button
+          type="button"
+          className="ghost-btn"
+          disabled={pending}
+          onClick={markDelivered}
+        >
+          Mark delivered
+        </button>
+        <span className="panel-toggles">
+          <button
+            type="button"
+            className={`ghost-btn${panels.sections ? " is-on" : ""}`}
+            onClick={() => togglePanel("sections")}
+            title="Minimize/maximize sections panel"
+          >
+            {panels.sections ? "Sections −" : "Sections +"}
+          </button>
+          <button
+            type="button"
+            className={`ghost-btn${panels.controls ? " is-on" : ""}`}
+            onClick={() => togglePanel("controls")}
+            title="Minimize/maximize design controls"
+          >
+            {panels.controls ? "Controls −" : "Controls +"}
+          </button>
+          <button
+            type="button"
+            className="ghost-btn"
+            onClick={maximizePreview}
+          >
+            Max preview
+          </button>
+          <button type="button" className="ghost-btn" onClick={resetPanels}>
+            Reset layout
+          </button>
+        </span>
+      </div>
 
-          <div className={`preview-edit-grid${editMode ? " editing" : ""}`}>
-            {editMode && (
-              <SectionEditorPanel
-                sections={liveResume.sectionLayout || []}
-                selectedId={selectedSection}
-                onSelect={setSelectedSection}
-                onChange={setSections}
-                resume={liveResume}
-                onResumePatch={patchResume}
-              />
-            )}
+      <div className={shellClass}>
+        {panels.sections && editMode ? (
+          <aside className="preview-sections-col no-print">
+            <div className="panel-chrome">
+              <strong>Sections</strong>
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={() => togglePanel("sections")}
+              >
+                Minimize
+              </button>
+            </div>
+            <SectionEditorPanel
+              sections={liveResume.sectionLayout || []}
+              selectedId={selectedSection}
+              onSelect={setSelectedSection}
+              onChange={setSections}
+              resume={liveResume}
+              onResumePatch={patchResume}
+            />
+          </aside>
+        ) : (
+          <button
+            type="button"
+            className="panel-rail no-print"
+            onClick={() => {
+              setEditMode(true);
+              setPanels((p) => ({ ...p, sections: true }));
+            }}
+          >
+            Sections
+          </button>
+        )}
+
+        {panels.preview && (
+          <div className="preview-main-col">
             <div className="preview-stage">
               <div className="resume-sheet" id="resume-print-root">
                 <ResumeRenderer
                   data={liveResume}
                   handlers={
-                    editMode
+                    editMode && panels.sections
                       ? {
                           editMode: true,
                           selectedId: selectedSection,
@@ -385,92 +512,171 @@ export function PreviewWorkspace({
               </div>
             </div>
           </div>
-        </div>
+        )}
 
-        <aside className="preview-side-controls no-print">
-          <div className="redesign-box">
-            <p className="intake-hint redesign-hint">
-              Redesign switches a full structural layout (not just colors). AI
-              Enhance rewrites copy and picks a new composition.
-            </p>
-            <div className="field-grid redesign-fields">
-              <label>
-                Technology
-                <select
-                  value={techKey}
-                  onChange={(e) => onTechChange(e.target.value)}
-                >
-                  {technologies.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                  <option value={OTHER}>Other…</option>
-                </select>
-              </label>
-              <label>
-                Design template
-                <select
-                  value={designTemplate}
-                  onChange={(e) =>
-                    setDesignTemplate(e.target.value as DesignTemplateId)
-                  }
-                >
-                  {DESIGN_TEMPLATES.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Layout accent
-                <select
-                  value={layout}
-                  onChange={(e) => setLayout(e.target.value as LayoutStyle)}
-                >
-                  {LAYOUT_OPTIONS.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <div
-              className={`redesign-other-slot${techKey === OTHER ? " open" : ""}`}
-            >
-              {techKey === OTHER ? (
-                <label>
-                  Custom technology name
-                  <input
-                    value={otherName}
-                    onChange={(e) => setOtherName(e.target.value)}
-                    placeholder="e.g. Snowflake, Golang"
-                  />
-                </label>
-              ) : null}
-            </div>
-            <div className="preview-action-row">
-              <button
-                type="button"
-                className="primary-btn"
-                disabled={pending}
-                onClick={redesign}
-              >
-                Redesign
-              </button>
+        {panels.controls ? (
+          <aside className="preview-side-controls no-print">
+            <div className="panel-chrome">
+              <strong>Design</strong>
               <button
                 type="button"
                 className="ghost-btn"
-                disabled={pending}
-                onClick={saveRedesign}
+                onClick={() => togglePanel("controls")}
               >
-                Save this design
+                Minimize
               </button>
             </div>
-          </div>
-        </aside>
+            <div className="redesign-box">
+              <p className="intake-hint redesign-hint">
+                Redesign switches structure. Tag style controls skill/chip
+                backgrounds (fixes white boxes on dark themes).
+              </p>
+              <div className="field-grid redesign-fields">
+                <label>
+                  Technology
+                  <select
+                    value={techKey}
+                    onChange={(e) => onTechChange(e.target.value)}
+                  >
+                    {technologies.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                    <option value={OTHER}>Other…</option>
+                  </select>
+                </label>
+                <label>
+                  Design template
+                  <select
+                    value={designTemplate}
+                    onChange={(e) =>
+                      setDesignTemplate(e.target.value as DesignTemplateId)
+                    }
+                  >
+                    {DESIGN_TEMPLATES.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Layout accent
+                  <select
+                    value={layout}
+                    onChange={(e) => {
+                      setLayout(e.target.value as LayoutStyle);
+                      setChipColors({ background: "", text: "" });
+                    }}
+                  >
+                    {LAYOUT_OPTIONS.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Tag / chip style
+                  <select
+                    value={chipStyle}
+                    onChange={(e) => {
+                      setChipStyle(e.target.value as ChipStyle);
+                      setChipColors({ background: "", text: "" });
+                    }}
+                  >
+                    {CHIP_STYLES.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="chip-color-row">
+                <label>
+                  Tag background
+                  <input
+                    type="color"
+                    value={
+                      chipColors.background ||
+                      liveResume.themeColors.surface ||
+                      "#232f3e"
+                    }
+                    onChange={(e) =>
+                      setChipColors((c) => ({
+                        ...c,
+                        background: e.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  Tag text
+                  <input
+                    type="color"
+                    value={
+                      chipColors.text || liveResume.themeColors.text || "#fafafa"
+                    }
+                    onChange={(e) =>
+                      setChipColors((c) => ({ ...c, text: e.target.value }))
+                    }
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  onClick={() => setChipColors({ background: "", text: "" })}
+                >
+                  Reset tags
+                </button>
+              </div>
+
+              <div
+                className={`redesign-other-slot${techKey === OTHER ? " open" : ""}`}
+              >
+                {techKey === OTHER ? (
+                  <label>
+                    Custom technology name
+                    <input
+                      value={otherName}
+                      onChange={(e) => setOtherName(e.target.value)}
+                      placeholder="e.g. Snowflake, Golang"
+                    />
+                  </label>
+                ) : null}
+              </div>
+              <div className="preview-action-row">
+                <button
+                  type="button"
+                  className="primary-btn"
+                  disabled={pending}
+                  onClick={redesign}
+                >
+                  Redesign
+                </button>
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  disabled={pending}
+                  onClick={saveRedesign}
+                >
+                  Save this design
+                </button>
+              </div>
+            </div>
+          </aside>
+        ) : (
+          <button
+            type="button"
+            className="panel-rail no-print"
+            onClick={() => setPanels((p) => ({ ...p, controls: true }))}
+          >
+            Design
+          </button>
+        )}
       </div>
     </div>
   );

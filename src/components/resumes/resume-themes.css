@@ -437,8 +437,8 @@
   padding: 5px 10px;
   font-size: 11.5px;
   font-weight: 600;
-  background: var(--r-card-b);
-  color: var(--r-accent-text);
+  background: var(--r-chip-bg, var(--r-surface));
+  color: var(--r-chip-text, var(--r-text));
   border-left: 3px solid var(--r-accent);
 }
 
@@ -593,8 +593,8 @@
   font-size: 11.5px;
   font-weight: 600;
   text-align: center;
-  background: var(--r-card-b);
-  color: var(--r-accent-text);
+  background: var(--r-chip-bg, var(--r-surface));
+  color: var(--r-chip-text, var(--r-text));
   border-top: 3px solid var(--r-accent);
 }
 
@@ -1037,8 +1037,8 @@
   padding: 5px 10px;
   font-size: 11.5px;
   font-weight: 600;
-  background: var(--r-card-b);
-  color: var(--r-accent-text);
+  background: var(--r-chip-bg, var(--r-surface));
+  color: var(--r-chip-text, var(--r-text));
 }
 
 .pulse-job {
@@ -1557,14 +1557,31 @@
   padding: 5px 10px;
   font-size: 11.5px;
   font-weight: 600;
+  background: var(--r-chip-bg, var(--r-surface));
+  color: var(--r-chip-text, var(--r-text));
+  border: 1px solid transparent;
+}
+
+.compose-chips.alt span,
+.chip-outline .compose-chips span {
+  background: transparent;
+  color: var(--r-chip-text, var(--r-text));
+  border-color: color-mix(in srgb, var(--r-accent) 55%, transparent);
+}
+
+.chip-accent .compose-chips span {
+  background: var(--r-accent);
+  color: var(--r-accent-text);
+}
+
+.chip-contrast .compose-chips span {
   background: var(--r-card-b);
   color: var(--r-accent-text);
 }
 
-.compose-chips.alt span {
-  background: transparent;
-  color: var(--r-text);
-  border: 1px solid color-mix(in srgb, var(--r-accent) 45%, transparent);
+.chip-soft .compose-chips span {
+  background: var(--r-chip-bg);
+  color: var(--r-chip-text);
 }
 
 .compose-job {
