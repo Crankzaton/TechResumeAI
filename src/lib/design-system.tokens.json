@@ -1,0 +1,24 @@
+{
+  "name": "TechResumeAI Design System",
+  "description": "Proprietary tokens for Figma sync once MCP is authenticated. Not a public Canva kit.",
+  "productLine": [
+    { "id": "classic", "name": "Platform Classic" },
+    { "id": "signal", "name": "Orbital Mast" },
+    { "id": "mosaic", "name": "Lattice Grid" },
+    { "id": "horizon", "name": "Spectrum Ribbon" },
+    { "id": "atelier", "name": "Folio Split" },
+    { "id": "pulse", "name": "Synapse Rail" }
+  ],
+  "typography": {
+    "display": "Fraunces",
+    "body": "Source Sans 3",
+    "mono": "ui-monospace"
+  },
+  "motifs": ["orbit", "lattice", "spectrum", "folio", "synapse", "platform"],
+  "signature": {
+    "format": "TechResumeAI · TR-#### · DNA-{hex}",
+    "purpose": "Authenticity seal — paid deliverable identity"
+  },
+  "figmaStatus": "pending_auth",
+  "notes": "Connect Figma MCP in Cursor to push these compositions into a private design file."
+}
