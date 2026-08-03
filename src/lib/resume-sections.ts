@@ -1,4 +1,10 @@
-import type { ResumeData, ResumeSectionConfig, SectionKind } from "./types";
+import type {
+  ResumeData,
+  ResumeSectionConfig,
+  ResumeStyleSettings,
+  SectionKind,
+} from "./types";
+import { DEFAULT_RESUME_STYLE } from "./types";
 
 const DEFAULT_TITLES: Record<SectionKind, string> = {
   header: "Header",
@@ -15,6 +21,7 @@ const DEFAULT_TITLES: Record<SectionKind, string> = {
   interests: "Interests",
   additional: "Additional",
   custom: "Custom section",
+  spacer: "Spacer",
 };
 
 export function defaultSectionTitle(kind: SectionKind) {
@@ -120,6 +127,12 @@ export function ensureSectionLayout(data: ResumeData): ResumeSectionConfig[] {
   return buildDefaultSectionLayout(data);
 }
 
+export function ensureStyleSettings(
+  data: Pick<ResumeData, "styleSettings">,
+): ResumeStyleSettings {
+  return { ...DEFAULT_RESUME_STYLE, ...(data.styleSettings || {}) };
+}
+
 export function moveSection(
   list: ResumeSectionConfig[],
   id: string,
@@ -142,6 +155,16 @@ export function duplicateSection(
   const idx = list.findIndex((s) => s.id === id);
   if (idx < 0) return list;
   const src = list[idx];
+  if (src.kind === "spacer") {
+    const clone: ResumeSectionConfig = {
+      ...src,
+      id: `spacer-${Date.now().toString(36)}`,
+      title: "Spacer",
+    };
+    const copy = [...list];
+    copy.splice(idx + 1, 0, clone);
+    return copy;
+  }
   const clone: ResumeSectionConfig = {
     ...src,
     id: `${src.kind}-${Date.now().toString(36)}`,
@@ -151,12 +174,31 @@ export function duplicateSection(
       src.customBody ||
       (src.kind === "custom" ? "" : `Duplicated · ${src.title}`),
   };
-  // Duplicates of content sections become custom text blocks so both can exist
   if (src.kind !== "custom" && src.kind !== "header") {
     clone.kind = "custom";
   }
   const copy = [...list];
   copy.splice(idx + 1, 0, clone);
+  return copy;
+}
+
+export function insertSpacerAfter(
+  list: ResumeSectionConfig[],
+  afterId?: string | null,
+  size = 24,
+): ResumeSectionConfig[] {
+  const spacer: ResumeSectionConfig = {
+    id: `spacer-${Date.now().toString(36)}`,
+    kind: "spacer",
+    title: "Spacer",
+    visible: true,
+    spacerSize: size,
+  };
+  if (!afterId) return [...list, spacer];
+  const idx = list.findIndex((s) => s.id === afterId);
+  if (idx < 0) return [...list, spacer];
+  const copy = [...list];
+  copy.splice(idx + 1, 0, spacer);
   return copy;
 }
 

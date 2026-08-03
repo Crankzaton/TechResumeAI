@@ -1284,3 +1284,31 @@ textarea {
     align-items: flex-start;
   }
 }
+
+.style-panel {
+  margin: 0.65rem 0;
+  padding: 0.65rem 0.55rem;
+  border-top: 1px dashed var(--line);
+  border-bottom: 1px dashed var(--line);
+}
+
+.style-panel-title {
+  margin: 0 0 0.45rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--moss);
+}
+
+.range-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.45rem;
+  font-size: 0.82rem;
+}
+
+.range-field input[type="range"] {
+  width: 100%;
+}

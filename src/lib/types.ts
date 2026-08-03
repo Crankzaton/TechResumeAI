@@ -9,6 +9,37 @@ export type DesignTemplateId =
 /** How skill/tool tags render — avoids accidental white boxes on dark themes */
 export type ChipStyle = "soft" | "accent" | "outline" | "contrast";
 
+export type ResumeFontId = "sans" | "serif" | "mono" | "display";
+
+export type HeaderAlign = "left" | "center" | "split";
+
+/** Global typography + spacing customization for the resume sheet */
+export interface ResumeStyleSettings {
+  bodyFont: ResumeFontId;
+  headingFont: ResumeFontId;
+  nameSize: number;
+  sectionTitleSize: number;
+  bodySize: number;
+  sectionGap: number;
+  sectionPadding: number;
+  headerAlign: HeaderAlign;
+  showSectionRules: boolean;
+  denserBullets: boolean;
+}
+
+export const DEFAULT_RESUME_STYLE: ResumeStyleSettings = {
+  bodyFont: "sans",
+  headingFont: "display",
+  nameSize: 32,
+  sectionTitleSize: 11,
+  bodySize: 13,
+  sectionGap: 10,
+  sectionPadding: 10,
+  headerAlign: "split",
+  showSectionRules: true,
+  denserBullets: false,
+};
+
 export type LayoutStyle =
   | "platform-dark"
   | "cloud-blue"
@@ -75,7 +106,8 @@ export type SectionKind =
   | "awards"
   | "interests"
   | "additional"
-  | "custom";
+  | "custom"
+  | "spacer";
 
 /** Editable composition — order, titles, visibility, duplicates */
 export interface ResumeSectionConfig {
@@ -85,6 +117,8 @@ export interface ResumeSectionConfig {
   visible: boolean;
   /** Freeform body for custom / duplicated text blocks */
   customBody?: string;
+  /** Spacer height in px when kind === spacer */
+  spacerSize?: number;
 }
 
 export interface Technology {
@@ -183,6 +217,7 @@ export interface ResumeData {
   chipStyle?: ChipStyle;
   /** Optional override for skill/tool tag colors */
   chipColors?: { background: string; text: string };
+  styleSettings?: ResumeStyleSettings;
   themeColors: Technology["colors"];
   formConnectionId?: string;
   fullName: string;

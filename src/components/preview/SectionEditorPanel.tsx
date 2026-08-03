@@ -3,6 +3,7 @@
 import type { ResumeData, ResumeSectionConfig } from "@/lib/types";
 import {
   duplicateSection,
+  insertSpacerAfter,
   moveSection,
   sectionLabel,
 } from "@/lib/resume-sections";
@@ -44,24 +45,38 @@ export function SectionEditorPanel({
     onSelect(id);
   }
 
+  function addSpacer() {
+    const next = insertSpacerAfter(sections, selectedId, 28);
+    onChange(next);
+    const created = next.find((s) => s.kind === "spacer" && !sections.some((o) => o.id === s.id));
+    if (created) onSelect(created.id);
+  }
+
   return (
     <aside className="section-editor no-print">
       <div className="section-editor-head">
         <h3>Sections</h3>
-        <button type="button" className="ghost-btn" onClick={addCustom}>
-          + Section
-        </button>
+        <div style={{ display: "flex", gap: "0.35rem" }}>
+          <button type="button" className="ghost-btn" onClick={addSpacer}>
+            + Spacer
+          </button>
+          <button type="button" className="ghost-btn" onClick={addCustom}>
+            + Section
+          </button>
+        </div>
       </div>
       <p className="intake-hint" style={{ marginBottom: "0.6rem" }}>
-        Click a section on the resume or below. Move, rename, hide, duplicate —
-        then Download PDF.
+        Click a block on the resume to rename it live. Add spacers between
+        sections. Move / duplicate / hide from here.
       </p>
       <ul className="section-list">
         {sections.map((s) => (
           <li key={s.id} className={s.id === selectedId ? "active" : ""}>
             <button type="button" onClick={() => onSelect(s.id)}>
               <span>{s.visible ? "●" : "○"}</span>
-              {s.title}
+              {s.kind === "spacer"
+                ? `Spacer (${s.spacerSize || 24}px)`
+                : s.title}
               <em>{sectionLabel(s.kind)}</em>
             </button>
           </li>
@@ -70,13 +85,32 @@ export function SectionEditorPanel({
 
       {selected && (
         <div className="section-detail">
-          <label>
-            Section title
-            <input
-              value={selected.title}
-              onChange={(e) => updateSelected({ title: e.target.value })}
-            />
-          </label>
+          {selected.kind !== "spacer" && (
+            <label>
+              Section title
+              <input
+                value={selected.title}
+                onChange={(e) => updateSelected({ title: e.target.value })}
+              />
+            </label>
+          )}
+
+          {selected.kind === "spacer" && (
+            <label>
+              Spacer height (px)
+              <input
+                type="number"
+                min={8}
+                max={120}
+                value={selected.spacerSize || 24}
+                onChange={(e) =>
+                  updateSelected({
+                    spacerSize: Math.max(8, Number(e.target.value) || 24),
+                  })
+                }
+              />
+            </label>
+          )}
 
           {selected.kind === "custom" && (
             <label>
@@ -200,12 +234,21 @@ export function SectionEditorPanel({
               type="button"
               className="ghost-btn"
               onClick={() => {
+                const next = insertSpacerAfter(sections, selected.id, 28);
+                onChange(next);
+              }}
+            >
+              + Spacer below
+            </button>
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={() => {
                 const next = duplicateSection(sections, selected.id);
                 onChange(next);
                 const created = next.find(
                   (s, i) =>
-                    s.id !== selected.id &&
-                    next[i - 1]?.id === selected.id,
+                    s.id !== selected.id && next[i - 1]?.id === selected.id,
                 );
                 if (created) onSelect(created.id);
               }}
@@ -215,13 +258,11 @@ export function SectionEditorPanel({
             <button
               type="button"
               className="ghost-btn"
-              onClick={() =>
-                updateSelected({ visible: !selected.visible })
-              }
+              onClick={() => updateSelected({ visible: !selected.visible })}
             >
               {selected.visible ? "Hide" : "Show"}
             </button>
-            {selected.kind === "custom" && (
+            {(selected.kind === "custom" || selected.kind === "spacer") && (
               <button
                 type="button"
                 className="ghost-btn danger"
@@ -233,15 +274,17 @@ export function SectionEditorPanel({
                 Delete
               </button>
             )}
-            {selected.kind !== "custom" && selected.kind !== "header" && (
-              <button
-                type="button"
-                className="ghost-btn danger"
-                onClick={() => updateSelected({ visible: false })}
-              >
-                Remove from resume
-              </button>
-            )}
+            {selected.kind !== "custom" &&
+              selected.kind !== "header" &&
+              selected.kind !== "spacer" && (
+                <button
+                  type="button"
+                  className="ghost-btn danger"
+                  onClick={() => updateSelected({ visible: false })}
+                >
+                  Remove from resume
+                </button>
+              )}
           </div>
         </div>
       )}

@@ -18,6 +18,7 @@ export type SectionHandlers = {
   selectedId: string | null;
   onSelect: (id: string) => void;
   editMode: boolean;
+  onRename?: (id: string, title: string) => void;
 };
 
 type Ctx = {
@@ -41,11 +42,13 @@ export function ComposableResume({
   const skin = data.designTemplate || "classic";
   const layout = data.layout || "platform-dark";
   const chipStyle = data.chipStyle || "soft";
+  const style = data.styleSettings;
+  const align = style?.headerAlign || "split";
   const ctx: Ctx = { data, metrics, handlers, sections };
 
   return (
     <article
-      className={`tpl composable proprietary skin-${skin} layout-${layout} structure-${skin} chip-${chipStyle}`}
+      className={`tpl composable proprietary skin-${skin} layout-${layout} structure-${skin} chip-${chipStyle} header-${align}${style?.showSectionRules === false ? " no-section-rules" : ""}${style?.denserBullets ? " denser-bullets" : ""}`}
       style={themeVars(data)}
       data-template={skin}
       data-layout={layout}
@@ -97,6 +100,11 @@ function Wrap({
     <div
       className={`compose-section kind-${section.kind}${selected ? " is-selected" : ""}${editMode ? " is-editable" : ""} ${className}`}
       data-section-id={section.id}
+      style={
+        section.kind === "spacer"
+          ? { minHeight: section.spacerSize || 24 }
+          : undefined
+      }
       onClick={(e) => {
         if (!handlers?.editMode) return;
         e.stopPropagation();
@@ -105,13 +113,47 @@ function Wrap({
     >
       {editMode && (
         <div className="compose-chrome no-print">
-          <span>{section.title}</span>
+          {section.kind === "spacer" ? (
+            <span>Spacer · {section.spacerSize || 24}px</span>
+          ) : selected && handlers.onRename ? (
+            <input
+              className="compose-title-inline"
+              value={section.title}
+              aria-label="Rename section"
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => handlers.onRename?.(section.id, e.target.value)}
+            />
+          ) : (
+            <span>{section.title}</span>
+          )}
           {selected && <em>selected</em>}
         </div>
       )}
       {children}
     </div>
   );
+}
+
+function EditableHeading({
+  section,
+  handlers,
+}: {
+  section: ResumeSectionConfig;
+  handlers?: SectionHandlers;
+}) {
+  const selected = handlers?.selectedId === section.id;
+  if (handlers?.editMode && selected && handlers.onRename) {
+    return (
+      <input
+        className="compose-h2-input"
+        value={section.title}
+        aria-label="Section title"
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => handlers.onRename?.(section.id, e.target.value)}
+      />
+    );
+  }
+  return <h2>{section.title}</h2>;
 }
 
 function find(sections: ResumeSectionConfig[], kind: string) {
@@ -191,7 +233,12 @@ function RestSections({
         .filter((s) => !skip.has(s.kind) && s.kind !== "header" && s.kind !== "impact")
         .map((section) => (
           <Wrap key={section.id} section={section} handlers={ctx.handlers}>
-            <SectionBody section={section} data={ctx.data} metrics={ctx.metrics} />
+            <SectionBody
+              section={section}
+              data={ctx.data}
+              metrics={ctx.metrics}
+              handlers={ctx.handlers}
+            />
           </Wrap>
         ))}
     </>
@@ -202,15 +249,26 @@ function SectionBody({
   section,
   data,
   metrics,
+  handlers,
 }: {
   section: ResumeSectionConfig;
   data: ResumeData;
   metrics: { label: string; value: string }[];
+  handlers?: SectionHandlers;
 }) {
+  if (section.kind === "spacer") {
+    return (
+      <div
+        className="compose-spacer"
+        style={{ height: section.spacerSize || 24 }}
+        aria-hidden
+      />
+    );
+  }
   if (section.kind === "summary" && data.summary) {
     return (
       <section className="compose-block">
-        <h2>{section.title}</h2>
+        <EditableHeading section={section} handlers={handlers} />
         <p className="compose-summary">{data.summary}</p>
       </section>
     );
@@ -219,7 +277,7 @@ function SectionBody({
   if (section.kind === "skills" && data.expertise.length) {
     return (
       <section className="compose-block">
-        <h2>{section.title}</h2>
+        <EditableHeading section={section} handlers={handlers} />
         <SkillsChips items={data.expertise} />
       </section>
     );
@@ -227,7 +285,7 @@ function SectionBody({
   if (section.kind === "tools" && (data.tools?.length || 0) > 0) {
     return (
       <section className="compose-block">
-        <h2>{section.title}</h2>
+        <EditableHeading section={section} handlers={handlers} />
         <SkillsChips items={data.tools || []} alt />
       </section>
     );
@@ -235,7 +293,7 @@ function SectionBody({
   if (section.kind === "experience") {
     return (
       <section className="compose-block">
-        <h2>{section.title}</h2>
+        <EditableHeading section={section} handlers={handlers} />
         <ExperienceList data={data} />
       </section>
     );
@@ -243,7 +301,7 @@ function SectionBody({
   if (section.kind === "projects" && (data.projects?.length || 0) > 0) {
     return (
       <section className="compose-block">
-        <h2>{section.title}</h2>
+        <EditableHeading section={section} handlers={handlers} />
         {(data.projects || []).map((p) => (
           <div className="compose-job" key={p.name}>
             <h3>
@@ -259,7 +317,7 @@ function SectionBody({
   if (section.kind === "education") {
     return (
       <section className="compose-block">
-        <h2>{section.title}</h2>
+        <EditableHeading section={section} handlers={handlers} />
         {data.education.map((edu, i) => (
           <div className="compose-edu" key={`${edu.institution}-${i}`}>
             <strong>{edu.degree}</strong>
@@ -278,7 +336,7 @@ function SectionBody({
   if (section.kind === "certs") {
     return (
       <section className="compose-block">
-        <h2>{section.title}</h2>
+        <EditableHeading section={section} handlers={handlers} />
         <ul className="compose-list">
           {allCerts(data).map((c) => (
             <li key={c}>{c}</li>
@@ -290,7 +348,7 @@ function SectionBody({
   if (section.kind === "languages") {
     return (
       <section className="compose-block">
-        <h2>{section.title}</h2>
+        <EditableHeading section={section} handlers={handlers} />
         <ul className="compose-list">
           {data.languages.map((l) => (
             <li key={l.name}>
@@ -304,7 +362,7 @@ function SectionBody({
   if (section.kind === "awards" && (data.awards?.length || 0) > 0) {
     return (
       <section className="compose-block">
-        <h2>{section.title}</h2>
+        <EditableHeading section={section} handlers={handlers} />
         <ul className="compose-list">
           {(data.awards || []).map((a) => (
             <li key={a}>{a}</li>
@@ -316,7 +374,7 @@ function SectionBody({
   if (section.kind === "interests" && (data.interests?.length || 0) > 0) {
     return (
       <section className="compose-block">
-        <h2>{section.title}</h2>
+        <EditableHeading section={section} handlers={handlers} />
         <SkillsChips items={data.interests || []} />
       </section>
     );
@@ -324,7 +382,7 @@ function SectionBody({
   if (section.kind === "additional" && data.additionalWorks.length > 0) {
     return (
       <section className="compose-block">
-        <h2>{section.title}</h2>
+        <EditableHeading section={section} handlers={handlers} />
         <ul className="compose-list">
           {data.additionalWorks.map((w) => (
             <li key={w.description}>{w.description}</li>
@@ -336,7 +394,7 @@ function SectionBody({
   if (section.kind === "custom") {
     return (
       <section className="compose-block">
-        <h2>{section.title}</h2>
+        <EditableHeading section={section} handlers={handlers} />
         <p className="compose-summary">
           {section.customBody || "Empty custom section."}
         </p>
@@ -366,7 +424,7 @@ function ClassicStructure({ ctx }: { ctx: Ctx }) {
         <aside className="structure-aside">
           <Wrap section={skills} handlers={ctx.handlers}>
             <section className="compose-block">
-              <h2>{skills?.title || "Skills"}</h2>
+              { skills ? <EditableHeading section={skills} handlers={ctx.handlers} /> : <h2>Section</h2> }
               <ul className="compose-list">
                 {ctx.data.expertise.map((s) => (
                   <li key={s}>{s}</li>
@@ -377,7 +435,7 @@ function ClassicStructure({ ctx }: { ctx: Ctx }) {
           <Wrap section={tools} handlers={ctx.handlers}>
             {(ctx.data.tools?.length || 0) > 0 && (
               <section className="compose-block">
-                <h2>{tools?.title || "Tools"}</h2>
+                { tools ? <EditableHeading section={tools} handlers={ctx.handlers} /> : <h2>Section</h2> }
                 <ul className="compose-list">
                   {(ctx.data.tools || []).map((s) => (
                     <li key={s}>{s}</li>
@@ -389,7 +447,7 @@ function ClassicStructure({ ctx }: { ctx: Ctx }) {
           <Wrap section={certs} handlers={ctx.handlers}>
             {allCerts(ctx.data).length > 0 && (
               <section className="compose-block">
-                <h2>{certs?.title || "Certs"}</h2>
+                { certs ? <EditableHeading section={certs} handlers={ctx.handlers} /> : <h2>Section</h2> }
                 <ul className="compose-list">
                   {allCerts(ctx.data).map((c) => (
                     <li key={c}>{c}</li>
@@ -401,7 +459,7 @@ function ClassicStructure({ ctx }: { ctx: Ctx }) {
           <Wrap section={languages} handlers={ctx.handlers}>
             {ctx.data.languages.length > 0 && (
               <section className="compose-block">
-                <h2>{languages?.title || "Languages"}</h2>
+                { languages ? <EditableHeading section={languages} handlers={ctx.handlers} /> : <h2>Section</h2> }
                 <ul className="compose-list">
                   {ctx.data.languages.map((l) => (
                     <li key={l.name}>
@@ -439,14 +497,14 @@ function SignalStructure({ ctx }: { ctx: Ctx }) {
       <div className="structure-signal-rail">
         <Wrap section={skills} handlers={ctx.handlers}>
           <section className="compose-block">
-            <h2>{skills?.title || "Capability lattice"}</h2>
+            { skills ? <EditableHeading section={skills} handlers={ctx.handlers} /> : <h2>Section</h2> }
             <SkillsChips items={ctx.data.expertise} />
           </section>
         </Wrap>
         <Wrap section={certs} handlers={ctx.handlers}>
           {allCerts(ctx.data).length > 0 && (
             <section className="compose-block compose-block-accent">
-              <h2>{certs?.title || "Credentials"}</h2>
+              { certs ? <EditableHeading section={certs} handlers={ctx.handlers} /> : <h2>Section</h2> }
               <ul className="compose-list">
                 {allCerts(ctx.data).map((c) => (
                   <li key={c}>{c}</li>
@@ -458,7 +516,7 @@ function SignalStructure({ ctx }: { ctx: Ctx }) {
       </div>
       <Wrap section={experience} handlers={ctx.handlers}>
         <section className="compose-block">
-          <h2>{experience?.title || "Impact timeline"}</h2>
+          { experience ? <EditableHeading section={experience} handlers={ctx.handlers} /> : <h2>Section</h2> }
           {ctx.data.workExperience.map((job, i) => (
             <div className="signal-indexed-job" key={`${job.company}-${i}`}>
               <div className="signal-idx">{String(i + 1).padStart(2, "0")}</div>
@@ -511,6 +569,7 @@ function MosaicStructure({ ctx }: { ctx: Ctx }) {
               section={section}
               data={ctx.data}
               metrics={ctx.metrics}
+              handlers={ctx.handlers}
             />
           )}
         </Wrap>
@@ -537,6 +596,7 @@ function HorizonStructure({ ctx }: { ctx: Ctx }) {
               section={section}
               data={ctx.data}
               metrics={ctx.metrics}
+              handlers={ctx.handlers}
             />
           )}
         </Wrap>
@@ -563,7 +623,7 @@ function AtelierStructure({ ctx }: { ctx: Ctx }) {
         </Wrap>
         <Wrap section={skills} handlers={ctx.handlers}>
           <section>
-            <h2>{skills?.title || "Toolkit"}</h2>
+            { skills ? <EditableHeading section={skills} handlers={ctx.handlers} /> : <h2>Section</h2> }
             <ol className="atelier-numbered">
               {ctx.data.expertise.map((s, i) => (
                 <li key={s}>
@@ -577,7 +637,7 @@ function AtelierStructure({ ctx }: { ctx: Ctx }) {
         <Wrap section={tools} handlers={ctx.handlers}>
           {(ctx.data.tools?.length || 0) > 0 && (
             <section>
-              <h2>{tools?.title || "Tools"}</h2>
+              { tools ? <EditableHeading section={tools} handlers={ctx.handlers} /> : <h2>Section</h2> }
               <ul className="compose-list">
                 {(ctx.data.tools || []).map((t) => (
                   <li key={t}>{t}</li>
@@ -589,7 +649,7 @@ function AtelierStructure({ ctx }: { ctx: Ctx }) {
         <Wrap section={certs} handlers={ctx.handlers}>
           {allCerts(ctx.data).length > 0 && (
             <section>
-              <h2>{certs?.title || "Certified"}</h2>
+              { certs ? <EditableHeading section={certs} handlers={ctx.handlers} /> : <h2>Section</h2> }
               <ul className="compose-list">
                 {allCerts(ctx.data).map((c) => (
                   <li key={c}>{c}</li>
@@ -601,7 +661,7 @@ function AtelierStructure({ ctx }: { ctx: Ctx }) {
         <Wrap section={languages} handlers={ctx.handlers}>
           {ctx.data.languages.length > 0 && (
             <section>
-              <h2>{languages?.title || "Languages"}</h2>
+              { languages ? <EditableHeading section={languages} handlers={ctx.handlers} /> : <h2>Section</h2> }
               <ul className="compose-list">
                 {ctx.data.languages.map((l) => (
                   <li key={l.name}>
@@ -624,7 +684,7 @@ function AtelierStructure({ ctx }: { ctx: Ctx }) {
         <RestSections ctx={ctx} skip={skip} />
         {customs(ctx.sections).map((c) => (
           <Wrap key={c.id} section={c} handlers={ctx.handlers}>
-            <SectionBody section={c} data={ctx.data} metrics={ctx.metrics} />
+            <SectionBody section={c} data={ctx.data} metrics={ctx.metrics} handlers={ctx.handlers} />
           </Wrap>
         ))}
       </main>
@@ -655,6 +715,7 @@ function PulseStructure({ ctx }: { ctx: Ctx }) {
               section={section}
               data={ctx.data}
               metrics={ctx.metrics}
+              handlers={ctx.handlers}
             />
           )}
         </Wrap>

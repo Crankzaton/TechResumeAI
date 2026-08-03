@@ -1,9 +1,24 @@
 import type { CSSProperties } from "react";
-import type { ChipStyle, ResumeData } from "@/lib/types";
+import type { ChipStyle, ResumeData, ResumeFontId } from "@/lib/types";
 import { buildDesignDna, techMonogram } from "@/lib/design-dna";
+import { ensureStyleSettings } from "@/lib/resume-sections";
 
 export function allCerts(data: ResumeData) {
   return data.certifications.map((c) => c.name);
+}
+
+function fontStack(id: ResumeFontId): string {
+  switch (id) {
+    case "serif":
+      return 'Georgia, "Times New Roman", serif';
+    case "mono":
+      return 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+    case "display":
+      return 'var(--font-display), Fraunces, Georgia, serif';
+    case "sans":
+    default:
+      return 'var(--font-body), "Source Sans 3", "Segoe UI", sans-serif';
+  }
 }
 
 function chipVars(
@@ -36,7 +51,6 @@ function chipVars(
       ["--r-chip-text"]: isLight(c.cardBody) ? "#111827" : c.text,
     };
   }
-  // soft — theme-aware, never harsh white on dark
   return {
     ["--r-chip-bg"]: isLight(c.background)
       ? c.cardBody
@@ -57,6 +71,7 @@ function isLight(hex: string) {
 export function themeVars(data: ResumeData): CSSProperties {
   const c = data.themeColors;
   const dna = buildDesignDna(data);
+  const s = ensureStyleSettings(data);
   return {
     ["--r-bg" as string]: c.background,
     ["--r-surface" as string]: c.surface,
@@ -70,6 +85,13 @@ export function themeVars(data: ResumeData): CSSProperties {
     ["--dna-angle" as string]: `${dna.angle}deg`,
     ["--dna-skew" as string]: `${dna.latticeSkew}deg`,
     ["--dna-band" as string]: `${dna.bandOffset}px`,
+    ["--r-font-body" as string]: fontStack(s.bodyFont),
+    ["--r-font-heading" as string]: fontStack(s.headingFont),
+    ["--r-name-size" as string]: `${s.nameSize}px`,
+    ["--r-section-title-size" as string]: `${s.sectionTitleSize}px`,
+    ["--r-body-size" as string]: `${s.bodySize}px`,
+    ["--r-section-gap" as string]: `${s.sectionGap}px`,
+    ["--r-section-pad" as string]: `${s.sectionPadding}px`,
     ...chipVars(data.chipStyle, c, data.chipColors),
   };
 }

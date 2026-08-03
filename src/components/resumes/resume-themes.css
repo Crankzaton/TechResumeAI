@@ -1864,3 +1864,113 @@
     grid-column: span 1;
   }
 }
+
+/* Typography + spacing customization */
+.tpl.composable {
+  font-family: var(--r-font-body);
+  font-size: var(--r-body-size, 13px);
+}
+
+.tpl.composable .compose-header h1,
+.tpl.composable .atelier-main h1,
+.tpl.composable h1 {
+  font-family: var(--r-font-heading);
+  font-size: var(--r-name-size, 32px);
+}
+
+.tpl.composable h2,
+.tpl.composable .compose-h2-input {
+  font-family: var(--r-font-heading);
+  font-size: var(--r-section-title-size, 11px);
+}
+
+.tpl.composable .composable-body,
+.tpl.composable .structure-classic,
+.tpl.composable .structure-signal,
+.tpl.composable .structure-mosaic,
+.tpl.composable .structure-horizon,
+.tpl.composable .structure-atelier,
+.tpl.composable .structure-pulse {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r-section-gap, 10px);
+}
+
+.tpl.composable .structure-classic-grid,
+.tpl.composable .structure-signal-rail,
+.tpl.composable .structure-atelier {
+  gap: var(--r-section-gap, 10px);
+}
+
+.tpl.composable .compose-block {
+  padding: var(--r-section-pad, 10px) calc(var(--r-section-pad, 10px) + 2px);
+}
+
+.tpl.composable.no-section-rules .compose-block {
+  border-left-color: transparent;
+}
+
+.tpl.composable.denser-bullets li {
+  margin: 0.08rem 0;
+  line-height: 1.3;
+}
+
+.tpl.composable.header-left .compose-header {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.tpl.composable.header-left .compose-header .tpl-contact {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.tpl.composable.header-center .compose-header {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.tpl.composable.header-center .compose-header .tpl-contact {
+  align-items: center;
+  text-align: center;
+}
+
+.compose-spacer {
+  width: 100%;
+  border: none;
+}
+
+.compose-section.kind-spacer.is-editable {
+  outline-style: dashed;
+  min-height: 16px;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 6px,
+    color-mix(in srgb, var(--r-accent) 12%, transparent) 6px,
+    color-mix(in srgb, var(--r-accent) 12%, transparent) 12px
+  );
+}
+
+.compose-title-inline,
+.compose-h2-input {
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--r-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--r-bg) 80%, transparent);
+  color: var(--r-accent);
+  font: inherit;
+  font-size: var(--r-section-title-size, 11px);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.compose-title-inline {
+  text-transform: none;
+  letter-spacing: 0.04em;
+  font-size: 10px;
+  max-width: 70%;
+}

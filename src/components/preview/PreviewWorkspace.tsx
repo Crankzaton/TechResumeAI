@@ -12,15 +12,19 @@ import {
   nextLayout,
 } from "@/lib/design-variants";
 import { pickContrastingTemplate } from "@/lib/ai-enhance";
-import { ensureSectionLayout } from "@/lib/resume-sections";
+import { ensureSectionLayout, ensureStyleSettings } from "@/lib/resume-sections";
 import type {
   ChipStyle,
   DesignTemplateId,
+  HeaderAlign,
   LayoutStyle,
   ResumeData,
+  ResumeFontId,
   ResumeSectionConfig,
+  ResumeStyleSettings,
   Technology,
 } from "@/lib/types";
+import { DEFAULT_RESUME_STYLE } from "@/lib/types";
 
 const OTHER = "__other__";
 const CHIP_STYLES: { id: ChipStyle; label: string }[] = [
@@ -28,6 +32,12 @@ const CHIP_STYLES: { id: ChipStyle; label: string }[] = [
   { id: "accent", label: "Accent fill" },
   { id: "outline", label: "Outline" },
   { id: "contrast", label: "High contrast" },
+];
+const FONT_OPTIONS: { id: ResumeFontId; label: string }[] = [
+  { id: "sans", label: "Sans (Source Sans)" },
+  { id: "display", label: "Display (Fraunces)" },
+  { id: "serif", label: "Serif (Georgia)" },
+  { id: "mono", label: "Mono" },
 ];
 const PANEL_KEY = "techresume-preview-panels-v1";
 
@@ -56,6 +66,9 @@ export function PreviewWorkspace({
   );
   const [chipColors, setChipColors] = useState(
     initial.chipColors || { background: "", text: "" },
+  );
+  const [styleSettings, setStyleSettings] = useState<ResumeStyleSettings>(
+    ensureStyleSettings(initial),
   );
   const [panels, setPanels] = useState({
     sections: true,
@@ -129,6 +142,7 @@ export function PreviewWorkspace({
               text: chipColors.text || colors.text,
             }
           : undefined,
+      styleSettings,
       themeColors: colors,
       sectionLayout: ensureSectionLayout(resume),
     };
@@ -141,6 +155,7 @@ export function PreviewWorkspace({
     designTemplate,
     chipStyle,
     chipColors,
+    styleSettings,
     variantIndex,
     technologies,
   ]);
@@ -155,6 +170,7 @@ export function PreviewWorkspace({
       designTemplate: liveResume.designTemplate,
       chipStyle: liveResume.chipStyle,
       chipColors: liveResume.chipColors,
+      styleSettings: liveResume.styleSettings,
       themeColors: liveResume.themeColors,
       sectionLayout: liveResume.sectionLayout,
       fullName: liveResume.fullName,
@@ -247,6 +263,19 @@ export function PreviewWorkspace({
 
   function setSections(next: ResumeSectionConfig[]) {
     setResume((r) => ({ ...r, sectionLayout: next }));
+  }
+
+  function renameSection(id: string, title: string) {
+    setResume((r) => ({
+      ...r,
+      sectionLayout: ensureSectionLayout(r).map((s) =>
+        s.id === id ? { ...s, title } : s,
+      ),
+    }));
+  }
+
+  function patchStyle(patch: Partial<ResumeStyleSettings>) {
+    setStyleSettings((s) => ({ ...s, ...patch }));
   }
 
   function downloadPdf() {
@@ -505,6 +534,7 @@ export function PreviewWorkspace({
                           editMode: true,
                           selectedId: selectedSection,
                           onSelect: setSelectedSection,
+                          onRename: renameSection,
                         }
                       : undefined
                   }
@@ -593,6 +623,146 @@ export function PreviewWorkspace({
                     ))}
                   </select>
                 </label>
+              </div>
+
+              <div className="style-panel">
+                <p className="style-panel-title">Typography & spacing</p>
+                <div className="field-grid redesign-fields">
+                  <label>
+                    Body font
+                    <select
+                      value={styleSettings.bodyFont}
+                      onChange={(e) =>
+                        patchStyle({ bodyFont: e.target.value as ResumeFontId })
+                      }
+                    >
+                      {FONT_OPTIONS.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Heading font
+                    <select
+                      value={styleSettings.headingFont}
+                      onChange={(e) =>
+                        patchStyle({
+                          headingFont: e.target.value as ResumeFontId,
+                        })
+                      }
+                    >
+                      {FONT_OPTIONS.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Header layout
+                    <select
+                      value={styleSettings.headerAlign}
+                      onChange={(e) =>
+                        patchStyle({
+                          headerAlign: e.target.value as HeaderAlign,
+                        })
+                      }
+                    >
+                      <option value="split">Name left / contact right</option>
+                      <option value="left">Stacked left</option>
+                      <option value="center">Centered</option>
+                    </select>
+                  </label>
+                </div>
+                <label className="range-field">
+                  Name size ({styleSettings.nameSize}px)
+                  <input
+                    type="range"
+                    min={22}
+                    max={48}
+                    value={styleSettings.nameSize}
+                    onChange={(e) =>
+                      patchStyle({ nameSize: Number(e.target.value) })
+                    }
+                  />
+                </label>
+                <label className="range-field">
+                  Section title size ({styleSettings.sectionTitleSize}px)
+                  <input
+                    type="range"
+                    min={9}
+                    max={18}
+                    value={styleSettings.sectionTitleSize}
+                    onChange={(e) =>
+                      patchStyle({ sectionTitleSize: Number(e.target.value) })
+                    }
+                  />
+                </label>
+                <label className="range-field">
+                  Body size ({styleSettings.bodySize}px)
+                  <input
+                    type="range"
+                    min={11}
+                    max={16}
+                    value={styleSettings.bodySize}
+                    onChange={(e) =>
+                      patchStyle({ bodySize: Number(e.target.value) })
+                    }
+                  />
+                </label>
+                <label className="range-field">
+                  Gap between sections ({styleSettings.sectionGap}px)
+                  <input
+                    type="range"
+                    min={0}
+                    max={28}
+                    value={styleSettings.sectionGap}
+                    onChange={(e) =>
+                      patchStyle({ sectionGap: Number(e.target.value) })
+                    }
+                  />
+                </label>
+                <label className="range-field">
+                  Section padding ({styleSettings.sectionPadding}px)
+                  <input
+                    type="range"
+                    min={4}
+                    max={20}
+                    value={styleSettings.sectionPadding}
+                    onChange={(e) =>
+                      patchStyle({ sectionPadding: Number(e.target.value) })
+                    }
+                  />
+                </label>
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={styleSettings.showSectionRules}
+                    onChange={(e) =>
+                      patchStyle({ showSectionRules: e.target.checked })
+                    }
+                  />
+                  Show section rules / dividers
+                </label>
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={styleSettings.denserBullets}
+                    onChange={(e) =>
+                      patchStyle({ denserBullets: e.target.checked })
+                    }
+                  />
+                  Denser bullet spacing
+                </label>
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  onClick={() => setStyleSettings({ ...DEFAULT_RESUME_STYLE })}
+                >
+                  Reset typography
+                </button>
               </div>
 
               <div className="chip-color-row">

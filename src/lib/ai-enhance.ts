@@ -22,6 +22,7 @@ const IMPACT_ORDER: ResumeSectionConfig["kind"][] = [
   "interests",
   "additional",
   "custom",
+  "spacer",
 ];
 
 export function enhanceResumeContent(data: ResumeData): {
