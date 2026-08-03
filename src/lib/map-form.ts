@@ -3,7 +3,6 @@ import type {
   Education,
   Language,
   ResumeInput,
-  ThemeId,
   WorkExperience,
 } from "./types";
 
@@ -26,10 +25,6 @@ function parseWorkExperience(value: unknown): WorkExperience[] {
   const text = asString(value);
   if (!text) return [];
 
-  // Blocks separated by blank lines:
-  // Title | Company | Start - End
-  // - bullet
-  // - bullet
   return text
     .split(/\n\s*\n/)
     .map((block) => block.trim())
@@ -80,34 +75,40 @@ function parseEducation(value: unknown): Education[] {
     });
 }
 
-function parseCertifications(value: unknown, category: Certification["category"]): Certification[] {
+function parseCertifications(
+  value: unknown,
+  category: Certification["category"],
+): Certification[] {
   return splitList(value).map((name) => ({ name, category }));
 }
 
 function parseLanguages(value: unknown): Language[] {
   return splitList(value).map((item) => {
     const [name, proficiency = "Professional"] = item
-      .split(/:|-/)
+      .split(/:|-–—/)
       .map((s) => s.trim());
     return { name, proficiency };
   });
 }
 
-function normalizeTheme(value: unknown): ThemeId {
-  const raw = asString(value).toLowerCase();
-  if (raw.includes("salesforce") || raw.includes("sfdc")) return "salesforce";
-  if (raw.includes("aws") || raw.includes("amazon")) return "aws";
-  if (raw.includes("azure") || raw.includes("microsoft")) return "azure";
-  return "servicenow";
-}
-
 /**
- * Maps Google Forms / Sheets payload keys (question titles or aliases)
- * into ResumeInput. Accepts either labeled keys or short aliases.
+ * Maps Google Forms / Sheets / intake payloads into a partial resume shape.
+ * Technology resolution happens in the agent (not here).
  */
-export function mapGoogleFormPayload(
-  body: Record<string, unknown>,
-): ResumeInput {
+export function mapGoogleFormPayload(body: Record<string, unknown>): {
+  source: ResumeInput["source"];
+  fullName: string;
+  headline?: string;
+  contact: ResumeInput["contact"];
+  expertise: string[];
+  certifications: Certification[];
+  languages: Language[];
+  workExperience: WorkExperience[];
+  education: Education[];
+  additionalWorks: { description: string }[];
+  notes?: string;
+  themeHint?: string;
+} {
   const get = (...keys: string[]) => {
     for (const key of keys) {
       if (body[key] != null && asString(body[key])) return body[key];
@@ -121,11 +122,20 @@ export function mapGoogleFormPayload(
 
   const phones = splitList(get("phones", "Phone", "Phone Numbers", "Mobile"));
   const mainline = parseCertifications(
-    get("certifications_mainline", "Main-Line Certifications", "Certifications (Main-Line)"),
+    get(
+      "certifications_mainline",
+      "Main-Line Certifications",
+      "Certifications (Main-Line)",
+      "Certifications",
+    ),
     "mainline",
   );
   const micro = parseCertifications(
-    get("certifications_micro", "Micro Certifications", "Certifications (Micro-Cert)"),
+    get(
+      "certifications_micro",
+      "Micro Certifications",
+      "Certifications (Micro-Cert)",
+    ),
     "micro",
   );
   const other = parseCertifications(
@@ -135,17 +145,24 @@ export function mapGoogleFormPayload(
 
   return {
     source: "google-forms",
-    theme: normalizeTheme(get("theme", "Technology Theme", "Resume Theme", "Platform")),
     fullName: asString(get("fullName", "Full Name", "Name")),
-    headline: asString(get("headline", "Headline", "Professional Title")) || undefined,
+    headline:
+      asString(get("headline", "Headline", "Professional Title")) || undefined,
     contact: {
-      phones: phones.length ? phones : [asString(get("phone", "Phone"))].filter(Boolean),
+      phones: phones.length
+        ? phones
+        : [asString(get("phone", "Phone"))].filter(Boolean),
       email: asString(get("email", "Email", "Email Address")),
-      linkedin: asString(get("linkedin", "LinkedIn", "LinkedIn URL")) || undefined,
-      website: asString(get("website", "Website", "Portfolio")) || undefined,
-      location: asString(get("location", "Location", "City")) || undefined,
+      linkedin:
+        asString(get("linkedin", "LinkedIn", "LinkedIn URL")) || undefined,
+      website:
+        asString(get("website", "Website", "Portfolio")) || undefined,
+      location:
+        asString(get("location", "Location", "City")) || undefined,
     },
-    expertise: splitList(get("expertise", "Skills", "Expertise", "Technical Skills")),
+    expertise: splitList(
+      get("expertise", "Skills", "Expertise", "Technical Skills"),
+    ),
     certifications: [...mainline, ...micro, ...other],
     languages: parseLanguages(get("languages", "Languages")),
     workExperience: parseWorkExperience(
@@ -153,15 +170,29 @@ export function mapGoogleFormPayload(
     ),
     education: parseEducation(get("education", "Education")),
     additionalWorks: splitList(
-      get("additionalWorks", "Additional Works", "Projects", "Other Experience"),
+      get(
+        "additionalWorks",
+        "Additional Works",
+        "Projects",
+        "Other Experience",
+      ),
     ).map((description) => ({ description })),
     notes: asString(get("notes", "Notes", "Anything else")) || undefined,
-    status: "new",
+    themeHint: asString(
+      get(
+        "theme",
+        "technology",
+        "technologyName",
+        "Technology Theme",
+        "Resume Theme",
+        "Platform",
+      ),
+    ),
   };
 }
 
-export function normalizeFormBody(body: Record<string, unknown>): ResumeInput {
-  if (body.source === "form" || body.fullName) {
+export function normalizeFormBody(body: Record<string, unknown>) {
+  if (body.fullName || body.source === "form" || body.source === "sample") {
     const workExperience = Array.isArray(body.workExperience)
       ? (body.workExperience as WorkExperience[])
       : parseWorkExperience(body.workExperience);
@@ -174,6 +205,7 @@ export function normalizeFormBody(body: Record<string, unknown>): ResumeInput {
           ...parseCertifications(body.certifications_mainline, "mainline"),
           ...parseCertifications(body.certifications_micro, "micro"),
           ...parseCertifications(body.certifications_other, "other"),
+          ...parseCertifications(body.certifications, "mainline"),
         ];
     const languages = Array.isArray(body.languages)
       ? (body.languages as Language[])
@@ -181,13 +213,14 @@ export function normalizeFormBody(body: Record<string, unknown>): ResumeInput {
 
     return {
       source: (body.source as ResumeInput["source"]) || "form",
-      theme: normalizeTheme(body.theme),
       fullName: asString(body.fullName),
       headline: asString(body.headline) || undefined,
       contact: {
         phones: Array.isArray((body.contact as { phones?: string[] })?.phones)
-          ? ((body.contact as { phones: string[] }).phones)
-          : splitList(body.phones || (body.contact as { phones?: string })?.phones),
+          ? (body.contact as { phones: string[] }).phones
+          : splitList(
+              body.phones || (body.contact as { phones?: string })?.phones,
+            ),
         email:
           asString((body.contact as { email?: string })?.email) ||
           asString(body.email),
@@ -213,9 +246,13 @@ export function normalizeFormBody(body: Record<string, unknown>): ResumeInput {
       education,
       additionalWorks: Array.isArray(body.additionalWorks)
         ? (body.additionalWorks as { description: string }[])
-        : splitList(body.additionalWorks).map((description) => ({ description })),
+        : splitList(body.additionalWorks).map((description) => ({
+            description,
+          })),
       notes: asString(body.notes) || undefined,
-      status: "new",
+      themeHint: asString(
+        body.theme || body.technology || body.technologyName,
+      ),
     };
   }
 

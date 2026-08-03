@@ -1,9 +1,8 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { THEMES } from "@/lib/themes";
-import type { ThemeId } from "@/lib/types";
+import type { Technology } from "@/lib/types";
 
 type JobDraft = {
   title: string;
@@ -22,19 +21,35 @@ const emptyJob = (): JobDraft => ({
 });
 
 export function ResumeIntakeForm({
-  defaultTheme = "servicenow",
+  defaultTechnologyId,
 }: {
-  defaultTheme?: ThemeId;
+  defaultTechnologyId?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [theme, setTheme] = useState<ThemeId>(defaultTheme);
+  const [techs, setTechs] = useState<Technology[]>([]);
+  const [technologyId, setTechnologyId] = useState(defaultTechnologyId || "");
   const [jobs, setJobs] = useState<JobDraft[]>([emptyJob()]);
 
-  const themeMeta = useMemo(
-    () => THEMES.find((t) => t.id === theme) ?? THEMES[0],
-    [theme],
+  useEffect(() => {
+    fetch("/api/technologies")
+      .then((r) => r.json())
+      .then((list: Technology[]) => {
+        setTechs(list.filter((t) => t.active));
+        if (!technologyId && list[0]) {
+          const preferred =
+            list.find((t) => t.id === defaultTechnologyId) || list[0];
+          setTechnologyId(preferred.id);
+        }
+      })
+      .catch(() => setError("Could not load technologies"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const selected = useMemo(
+    () => techs.find((t) => t.id === technologyId) || techs[0],
+    [techs, technologyId],
   );
 
   function updateJob(index: number, patch: Partial<JobDraft>) {
@@ -47,10 +62,12 @@ export function ResumeIntakeForm({
     e.preventDefault();
     setError(null);
     const form = new FormData(e.currentTarget);
+    const techName = selected?.name || String(form.get("technologyName") || "");
 
     const payload = {
       source: "form",
-      theme,
+      theme: techName,
+      technologyName: techName,
       fullName: String(form.get("fullName") || ""),
       headline: String(form.get("headline") || ""),
       email: String(form.get("email") || ""),
@@ -65,6 +82,7 @@ export function ResumeIntakeForm({
       education: String(form.get("education") || ""),
       additionalWorks: String(form.get("additionalWorks") || ""),
       notes: String(form.get("notes") || ""),
+      sendEmail: form.get("sendEmail") === "on",
       workExperience: jobs
         .filter((j) => j.title.trim())
         .map((j) => ({
@@ -103,22 +121,22 @@ export function ResumeIntakeForm({
       <section className="intake-section">
         <h2>Technology theme</h2>
         <p className="intake-hint">
-          Pick the platform look that matches the candidate&apos;s stack. The
-          resume layout and colors will adapt automatically.
+          Choose any stack configured in the admin console. Designs adapt
+          automatically.
         </p>
         <div className="theme-grid">
-          {THEMES.map((t) => (
+          {techs.map((t) => (
             <button
               type="button"
               key={t.id}
-              className={`theme-card ${theme === t.id ? "active" : ""}`}
+              className={`theme-card ${technologyId === t.id ? "active" : ""}`}
               style={
                 {
-                  "--theme-accent": t.accent,
-                  "--theme-bg": t.background,
+                  "--theme-accent": t.colors.accent,
+                  "--theme-bg": t.colors.background,
                 } as React.CSSProperties
               }
-              onClick={() => setTheme(t.id)}
+              onClick={() => setTechnologyId(t.id)}
             >
               <span className="theme-swatch" />
               <strong>{t.name}</strong>
@@ -126,7 +144,7 @@ export function ResumeIntakeForm({
             </button>
           ))}
         </div>
-        <p className="theme-desc">{themeMeta.description}</p>
+        {selected && <p className="theme-desc">{selected.description}</p>}
       </section>
 
       <section className="intake-section">
@@ -134,11 +152,11 @@ export function ResumeIntakeForm({
         <div className="field-grid">
           <label>
             Full name *
-            <input name="fullName" required placeholder="Gokul Nath Varadarajan" />
+            <input name="fullName" required placeholder="Full legal name" />
           </label>
           <label>
             Headline
-            <input name="headline" placeholder="ServiceNow Developer | CIS-ITSM" />
+            <input name="headline" placeholder="Role | Specialty" />
           </label>
           <label>
             Email *
@@ -146,7 +164,7 @@ export function ResumeIntakeForm({
           </label>
           <label>
             Phone numbers
-            <input name="phones" placeholder="+91-..., 91..." />
+            <input name="phones" placeholder="+91-..., +1-..." />
           </label>
           <label>
             LinkedIn
@@ -154,18 +172,18 @@ export function ResumeIntakeForm({
           </label>
           <label>
             Location
-            <input name="location" placeholder="Chennai, India" />
+            <input name="location" placeholder="City, Country" />
           </label>
         </div>
       </section>
 
       <section className="intake-section">
         <h2>Expertise / skills</h2>
-        <p className="intake-hint">One skill per line</p>
+        <p className="intake-hint">One skill per line — keep wording clear for recruiters</p>
         <textarea
           name="expertise"
           rows={6}
-          placeholder={"Flow Designer\nPerformance Analytics\nClient Scripts & Business Rules"}
+          placeholder={"Skill one\nSkill two\nSkill three"}
         />
       </section>
 
@@ -173,40 +191,24 @@ export function ResumeIntakeForm({
         <h2>Certifications</h2>
         <div className="field-grid">
           <label>
-            Main-line
-            <textarea
-              name="certifications_mainline"
-              rows={4}
-              placeholder={"CIS - ITSM\nCertified System Administrator"}
-            />
+            Main certifications
+            <textarea name="certifications_mainline" rows={4} />
           </label>
           <label>
             Micro-certs
-            <textarea
-              name="certifications_micro"
-              rows={4}
-              placeholder={"Flow Designer\nAutomated Test Framework"}
-            />
+            <textarea name="certifications_micro" rows={4} />
           </label>
           <label className="span-2">
             Other certifications
-            <textarea
-              name="certifications_other"
-              rows={3}
-              placeholder={"Google UX Professional Design"}
-            />
+            <textarea name="certifications_other" rows={3} />
           </label>
         </div>
       </section>
 
       <section className="intake-section">
         <h2>Languages</h2>
-        <p className="intake-hint">Format: Language: Proficiency (one per line)</p>
-        <textarea
-          name="languages"
-          rows={4}
-          placeholder={"English: Native Proficiency\nTamil: Native Proficiency"}
-        />
+        <p className="intake-hint">Format: Language: Proficiency</p>
+        <textarea name="languages" rows={4} placeholder={"English: Native Proficiency"} />
       </section>
 
       <section className="intake-section">
@@ -228,7 +230,6 @@ export function ResumeIntakeForm({
                 <input
                   value={job.title}
                   onChange={(e) => updateJob(index, { title: e.target.value })}
-                  placeholder="Senior Project Engineer"
                 />
               </label>
               <label>
@@ -236,15 +237,15 @@ export function ResumeIntakeForm({
                 <input
                   value={job.company}
                   onChange={(e) => updateJob(index, { company: e.target.value })}
-                  placeholder="Wipro"
                 />
               </label>
               <label>
                 Start date
                 <input
                   value={job.startDate}
-                  onChange={(e) => updateJob(index, { startDate: e.target.value })}
-                  placeholder="18 Mar 2024"
+                  onChange={(e) =>
+                    updateJob(index, { startDate: e.target.value })
+                  }
                 />
               </label>
               <label>
@@ -252,17 +253,15 @@ export function ResumeIntakeForm({
                 <input
                   value={job.endDate}
                   onChange={(e) => updateJob(index, { endDate: e.target.value })}
-                  placeholder="Current"
                 />
               </label>
             </div>
             <label>
-              Bullets (one per line)
+              Bullets (one per line — write outcomes clearly)
               <textarea
                 rows={5}
                 value={job.bullets}
                 onChange={(e) => updateJob(index, { bullets: e.target.value })}
-                placeholder="- Built complex Catalog items and Flow Designer workflows"
               />
             </label>
             {jobs.length > 1 && (
@@ -280,34 +279,31 @@ export function ResumeIntakeForm({
 
       <section className="intake-section">
         <h2>Education</h2>
-        <p className="intake-hint">
-          Format per block: Degree | College | 2015 - 2019 then optional stream on
-          next line
-        </p>
         <textarea
           name="education"
           rows={4}
           placeholder={
-            "Bachelors' Degree | Panimalar Engineering College, Chennai | 2015 - 2019\nElectronics and Communication Engineering"
+            "Degree | Institution | 2015 - 2019\nStream / major"
           }
         />
       </section>
 
       <section className="intake-section">
         <h2>Additional works</h2>
-        <textarea
-          name="additionalWorks"
-          rows={4}
-          placeholder={"Experienced in Figma and Adobe XD prototype creation"}
-        />
+        <textarea name="additionalWorks" rows={4} />
       </section>
 
       <section className="intake-section">
-        <h2>Internal notes</h2>
+        <h2>Delivery</h2>
+        <label className="check">
+          <input type="checkbox" name="sendEmail" />
+          Also email me the one-click preview link (uses Agent SMTP settings)
+        </label>
         <textarea
           name="notes"
           rows={3}
-          placeholder="Freelancer notes (not printed on resume)"
+          placeholder="Internal notes (not printed)"
+          style={{ marginTop: "0.75rem" }}
         />
       </section>
 
@@ -315,7 +311,7 @@ export function ResumeIntakeForm({
 
       <div className="form-actions">
         <button type="submit" className="primary-btn" disabled={pending}>
-          {pending ? "Building resume…" : "Generate themed resume"}
+          {pending ? "Agent building resume…" : "Generate resume (one click)"}
         </button>
       </div>
     </form>

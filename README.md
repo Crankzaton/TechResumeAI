@@ -1,15 +1,10 @@
 # TechResumeAI
 
-Platform-themed resume builder for freelancers. Collect candidate details from a Google Form (or the built-in intake form), pick a technology theme, and generate a print-ready resume.
+Freelancer **resume agent**: clients fill Google Forms → agent builds a
+technology-themed resume → emails you a one-click preview link to share.
 
-## Themes
-
-| Theme | Look |
-| --- | --- |
-| **ServiceNow** | Dark instance UI with filter bar, module sidebar, and list cards (based on the reference resume) |
-| **Salesforce** | Lightning workspace blues |
-| **AWS** | Console dark + orange accents |
-| **Azure** | Portal light cards |
+Works for **any technology** you configure (ServiceNow, Salesforce, AWS, Azure,
+React, Java, Python, Kubernetes, SAP, DevOps, or custom).
 
 ## Quick start
 
@@ -18,43 +13,56 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+1. Open **Admin / Agent** → configure notify email + SMTP
+2. **Technologies** → add stacks or use samples (one-click preview)
+3. **Google Forms** → link a form to a technology, copy webhook URL
+4. Paste `integrations/google-apps-script.gs` into the form’s sheet
 
-1. **Build a resume** → `/intake`
-2. **Orders dashboard** → `/admin`
-3. **Google Forms setup** → `/docs`
-4. Click **Load sample ServiceNow resume** on Orders to preview the reference layout
+## Agent automation
 
-## Google Forms
+When a form is submitted:
 
-1. Create a form with the question titles documented on `/docs`
-2. Paste `integrations/google-apps-script.gs` into the linked sheet’s Apps Script
-3. Set Script Properties:
-   - `WEBHOOK_URL` → `https://YOUR_DOMAIN/api/webhook/google-forms`
-   - `WEBHOOK_SECRET` → shared secret (optional)
-4. Add an **On form submit** trigger for `onFormSubmit`
-5. Set the same secret on the server:
+1. Webhook receives answers  
+2. Resume is generated in the linked technology theme  
+3. You get an email: **Open resume (one click)**  
+4. Print PDF and send to your customer  
+
+Configure in Admin → **Agent** (or env):
 
 ```bash
-WEBHOOK_SECRET=your-secret
+NOTIFY_EMAIL=you@email.com
+FROM_EMAIL=agent@yourdomain.com
+PUBLIC_BASE_URL=https://your-app.com
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=you@email.com
+SMTP_PASS=app-password
+WEBHOOK_SECRET=optional-global-secret
 ```
+
+## Admin console
+
+| Tab | Purpose |
+| --- | --- |
+| Overview | Stats, one-click samples, agent activity |
+| Technologies | Add any tech + colors + layout |
+| Google Forms | Bind forms → technologies, webhook URLs |
+| Agent | Email / SMTP / auto-generate toggles |
+| Orders | All resumes, open / re-email |
+
+## Layout styles
+
+`platform-dark` · `cloud-blue` · `console-dark` · `portal-light` · `modern-clean` · `terminal`
 
 ## API
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `GET` | `/api/resumes` | List orders |
-| `GET` | `/api/resumes?seed=sample` | Create/load sample ServiceNow resume |
-| `POST` | `/api/resumes` | Create from JSON / intake form |
-| `GET/PATCH/DELETE` | `/api/resumes/:id` | Read / update / delete |
-| `POST` | `/api/webhook/google-forms` | Google Forms webhook |
+| Endpoint | Role |
+| --- | --- |
+| `POST /api/webhook/google-forms?formId=` | Form → agent pipeline |
+| `GET/POST /api/technologies` | Tech catalog |
+| `GET/POST /api/forms` | Form connections |
+| `GET/PATCH /api/agent` | Agent settings + events |
+| `GET /api/resumes?sample=techId` | One-click sample |
+| `POST /api/resumes` | Manual / intake create |
 
-Resumes are stored in `data/resumes.json` (local JSON store — swap for a database when you scale).
-
-## PDF export
-
-On the preview page, use **Download / Print PDF** (browser print → Save as PDF). The print stylesheet isolates the resume sheet.
-
-## Stack
-
-Next.js App Router · TypeScript · Tailwind CSS v4 · file-based order store
+Data is stored under `data/*.json` (swap for a DB when you scale).

@@ -16,9 +16,9 @@ const body = Source_Sans_3({
 });
 
 export const metadata: Metadata = {
-  title: "TechResumeAI — Platform-themed resumes",
+  title: "TechResumeAI — Resume Agent for any technology",
   description:
-    "Turn Google Form responses into ServiceNow, Salesforce, AWS, and Azure themed resumes for your freelancing clients.",
+    "Google Forms to technology-themed resumes. Auto-generate and email one-click preview links for freelancing clients.",
 };
 
 export default function RootLayout({

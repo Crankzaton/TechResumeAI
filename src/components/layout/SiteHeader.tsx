@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 const links = [
   { href: "/", label: "Home" },
   { href: "/intake", label: "New Resume" },
-  { href: "/admin", label: "Orders" },
-  { href: "/docs", label: "Google Forms" },
+  { href: "/admin", label: "Admin / Agent" },
+  { href: "/docs", label: "Setup" },
 ];
 
 export function SiteHeader() {
@@ -26,7 +26,11 @@ export function SiteHeader() {
           <Link
             key={link.href}
             href={link.href}
-            className={pathname === link.href ? "active" : undefined}
+            className={
+              pathname === link.href || pathname.startsWith(link.href + "/")
+                ? "active"
+                : undefined
+            }
           >
             {link.label}
           </Link>

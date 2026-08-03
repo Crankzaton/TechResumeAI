@@ -1,20 +1,13 @@
 import { NextResponse } from "next/server";
-import { createResume, listResumes } from "@/lib/storage";
-import { normalizeFormBody } from "@/lib/map-form";
-import { SAMPLE_RESUME } from "@/lib/sample-data";
+import { listResumes } from "@/lib/storage";
+import { buildSampleForTechnology, runResumeAgent } from "@/lib/agent";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  if (searchParams.get("seed") === "sample") {
-    const existing = await listResumes();
-    const demo = existing.find((r) => r.fullName === SAMPLE_RESUME.fullName);
-    if (demo) return NextResponse.json(demo);
-    const created = await createResume({
-      ...SAMPLE_RESUME,
-      source: "manual",
-      status: "previewed",
-    });
-    return NextResponse.json(created);
+  const sampleTech = searchParams.get("sample");
+  if (sampleTech) {
+    const resume = await buildSampleForTechnology(sampleTech);
+    return NextResponse.json(resume);
   }
   const resumes = await listResumes();
   return NextResponse.json(resumes);
@@ -23,15 +16,15 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
-    const input = normalizeFormBody(body);
-    if (!input.fullName) {
-      return NextResponse.json(
-        { error: "Full name is required" },
-        { status: 400 },
-      );
-    }
-    const resume = await createResume(input);
-    return NextResponse.json(resume, { status: 201 });
+    const result = await runResumeAgent({
+      body,
+      formConnectionId: body.formConnectionId
+        ? String(body.formConnectionId)
+        : undefined,
+      source: (body.source as "form" | "manual" | "agent") || "form",
+      sendEmail: body.sendEmail === true,
+    });
+    return NextResponse.json(result.resume, { status: 201 });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Invalid payload" },

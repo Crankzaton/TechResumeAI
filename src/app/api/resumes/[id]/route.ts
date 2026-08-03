@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { deleteResume, getResume, updateResume } from "@/lib/storage";
+import { reEmailResume } from "@/lib/agent";
 import type { ResumeData } from "@/lib/types";
 
 type Params = { params: Promise<{ id: string }> };
@@ -15,7 +16,23 @@ export async function GET(_request: Request, { params }: Params) {
 
 export async function PATCH(request: Request, { params }: Params) {
   const { id } = await params;
-  const body = (await request.json()) as Partial<ResumeData>;
+  const body = (await request.json()) as Partial<ResumeData> & {
+    action?: string;
+  };
+
+  if (body.action === "email") {
+    try {
+      const result = await reEmailResume(id);
+      const resume = await getResume(id);
+      return NextResponse.json({ resume, email: result });
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Email failed" },
+        { status: 400 },
+      );
+    }
+  }
+
   const updated = await updateResume(id, body);
   if (!updated) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

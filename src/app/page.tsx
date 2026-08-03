@@ -1,7 +1,12 @@
 import Link from "next/link";
-import { THEMES } from "@/lib/themes";
+import { listTechnologies } from "@/lib/storage";
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const technologies = await listTechnologies();
+  const active = technologies.filter((t) => t.active).slice(0, 8);
+
   return (
     <>
       <section className="hero">
@@ -11,69 +16,69 @@ export default function HomePage() {
             Tech<span>Resume</span>AI
           </h1>
           <p className="hero-copy">
-            Collect client details from Google Forms, then generate resumes that
-            look like their platform — ServiceNow instance UI, Salesforce
-            Lightning, AWS console, or Azure portal.
+            Your resume agent for freelancing. Clients fill Google Forms — the
+            agent builds a clear, technology-themed resume and emails you a
+            one-click link to share.
           </p>
           <div className="hero-cta">
-            <Link href="/intake" className="primary-btn">
-              Build a resume
+            <Link href="/admin" className="primary-btn">
+              Open Admin / Agent
             </Link>
-            <Link href="/docs" className="ghost-btn">
-              Connect Google Forms
+            <Link href="/intake" className="ghost-btn">
+              Build a resume now
             </Link>
           </div>
         </div>
       </section>
 
       <section className="section">
-        <h2>From form to finished PDF</h2>
+        <h2>Agent workflow</h2>
         <p>
-          Built for freelancers who design tech-themed resumes. Clients fill a
-          form once; you preview, print, and deliver a branded one-pager.
+          Configure once in the admin console. Every new form response is
+          handled automatically — any technology, one-click delivery.
         </p>
         <div className="flow-grid">
           <article className="flow-card">
             <div className="step">Step 01</div>
-            <h3>Capture inputs</h3>
+            <h3>Register technologies</h3>
             <p>
-              Use the built-in intake form or pipe Google Forms responses into
-              the webhook with a short Apps Script.
+              ServiceNow, Salesforce, AWS, React, Java, SAP, Kubernetes — or add
+              your own colors and layout in Admin.
             </p>
           </article>
           <article className="flow-card">
             <div className="step">Step 02</div>
-            <h3>Match the stack</h3>
+            <h3>Link Google Forms</h3>
             <p>
-              Choose ServiceNow, Salesforce, AWS, or Azure. Layout, colors, and
-              section chrome adapt to that ecosystem.
+              Each form points at a technology. Apps Script posts to the agent
+              webhook the moment a client submits.
             </p>
           </article>
           <article className="flow-card">
             <div className="step">Step 03</div>
-            <h3>Preview & deliver</h3>
+            <h3>Get emailed, share fast</h3>
             <p>
-              Open the live preview, export a print-ready PDF, and track orders
-              from the freelancer dashboard.
+              The agent builds the resume and emails you. Open the link, print
+              PDF, send to your customer.
             </p>
           </article>
         </div>
       </section>
 
       <section className="section">
-        <h2>Technology themes</h2>
+        <h2>Technology themes ready</h2>
         <p>
-          Start with the ServiceNow navigator look from your reference resume,
-          then switch themes without rewriting content.
+          Clear typography and high-contrast layouts so customers can actually
+          read the resume. Add more anytime from Admin.
         </p>
         <div className="theme-showcase">
-          {THEMES.map((theme) => (
+          {active.map((theme) => (
             <article
               key={theme.id}
               className="theme-tile"
               style={
                 {
-                  "--tile-bg": `linear-gradient(145deg, ${theme.background}, color-mix(in srgb, ${theme.accent} 35%, ${theme.background}))`,
+                  "--tile-bg": `linear-gradient(145deg, ${theme.colors.background}, color-mix(in srgb, ${theme.colors.accent} 40%, ${theme.colors.background}))`,
                 } as React.CSSProperties
               }
             >
@@ -82,9 +87,12 @@ export default function HomePage() {
             </article>
           ))}
         </div>
-        <div style={{ marginTop: "1.5rem" }}>
-          <Link href="/intake?theme=servicenow" className="primary-btn">
-            Try ServiceNow theme
+        <div style={{ marginTop: "1.5rem", display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+          <Link href="/admin" className="primary-btn">
+            Manage technologies
+          </Link>
+          <Link href="/docs" className="ghost-btn">
+            Google Forms setup
           </Link>
         </div>
       </section>

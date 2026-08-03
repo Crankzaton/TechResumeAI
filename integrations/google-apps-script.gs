@@ -1,12 +1,10 @@
 /**
- * Google Forms → TechResumeAI
+ * Google Forms → TechResumeAI Agent
  *
- * Setup:
- * 1. Create a Google Form with the question titles listed in /docs
- * 2. Open the form's linked spreadsheet (Responses → Link to Sheets)
- * 3. Extensions → Apps Script → paste this file
- * 4. Set WEBHOOK_URL and optional WEBHOOK_SECRET in Script Properties
- * 5. Install an installable "On form submit" trigger for onFormSubmit
+ * 1. Admin → Google Forms → copy WEBHOOK_URL (includes formId) + secret
+ * 2. Sheet → Extensions → Apps Script → paste this file
+ * 3. Script Properties: WEBHOOK_URL, WEBHOOK_SECRET
+ * 4. Trigger: onFormSubmit / From form / On form submit
  */
 
 function onFormSubmit(e) {
@@ -15,7 +13,7 @@ function onFormSubmit(e) {
   var secret = props.getProperty("WEBHOOK_SECRET");
 
   if (!webhookUrl) {
-    throw new Error("Set Script Property WEBHOOK_URL to your deployed /api/webhook/google-forms URL");
+    throw new Error("Set Script Property WEBHOOK_URL from Admin → Google Forms");
   }
 
   var named = e.namedValues || {};
@@ -25,12 +23,13 @@ function onFormSubmit(e) {
     payload[key] = Array.isArray(values) ? values.join("\n") : values;
   });
 
-  // Also expose common aliases for resilient mapping
   payload.fullName = first(named, ["Full Name", "Name"]);
   payload.email = first(named, ["Email", "Email Address"]);
   payload.phones = first(named, ["Phone Numbers", "Phone", "Mobile"]);
   payload.linkedin = first(named, ["LinkedIn", "LinkedIn URL"]);
+  payload.headline = first(named, ["Headline", "Professional Title"]);
   payload.theme = first(named, ["Technology Theme", "Resume Theme", "Platform"]);
+  payload.technologyName = payload.theme;
   payload.expertise = first(named, ["Expertise", "Skills", "Technical Skills"]);
   payload.workExperience = first(named, ["Work Experience", "Experience"]);
   payload.education = first(named, ["Education"]);
@@ -38,6 +37,7 @@ function onFormSubmit(e) {
   payload.certifications_mainline = first(named, [
     "Certifications (Main-Line)",
     "Main-Line Certifications",
+    "Certifications",
   ]);
   payload.certifications_micro = first(named, [
     "Certifications (Micro-Cert)",
@@ -60,7 +60,7 @@ function onFormSubmit(e) {
     muteHttpExceptions: true,
   });
 
-  Logger.log("TechResumeAI webhook status: " + response.getResponseCode());
+  Logger.log("TechResumeAI agent status: " + response.getResponseCode());
   Logger.log(response.getContentText());
 }
 

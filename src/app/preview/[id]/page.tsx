@@ -10,7 +10,7 @@ export default async function PreviewPage({ params }: Props) {
   const resume = await getResume(id);
   if (!resume) notFound();
 
-  if (resume.status === "new") {
+  if (resume.status === "new" || resume.status === "ready") {
     await updateResume(id, { status: "previewed" });
     resume.status = "previewed";
   }
