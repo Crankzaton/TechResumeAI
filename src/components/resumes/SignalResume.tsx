@@ -1,23 +1,40 @@
 import type { ResumeData } from "@/lib/types";
-import { allCerts, ContactLine, themeVars } from "./shared";
+import { buildDesignDna, extractImpactMetrics } from "@/lib/design-dna";
+import { MotifCanvas } from "./MotifCanvas";
+import { SignatureSeal } from "./SignatureSeal";
+import { allCerts, ContactLine, ImpactStrip, MonoBadge, themeVars } from "./shared";
 
-/** Bold horizontal masthead + modular skill/experience rails — recruiter-first. */
+/** Orbital Mast — proprietary hero geometry + modular impact rails. */
 export function SignalResume({ data }: { data: ResumeData }) {
+  const dna = buildDesignDna(data);
   const certs = allCerts(data);
+  const metrics = extractImpactMetrics(data);
+
   return (
-    <article className="tpl signal" style={themeVars(data)} data-template="signal">
-      <header className="signal-masthead">
-        <div className="signal-masthead-main">
-          <p className="signal-kicker">{data.technologyName} specialist</p>
-          <h1>{data.fullName}</h1>
-          {data.headline && <p className="signal-headline">{data.headline}</p>}
+    <article className="tpl signal proprietary" style={themeVars(data)} data-template="signal">
+      <div className="signal-hero-wrap">
+        <div className="signal-motif-layer">
+          <MotifCanvas dna={dna} accent={data.themeColors.accent} muted={data.themeColors.muted} />
         </div>
-        <ContactLine data={data} />
-      </header>
+        <header className="signal-masthead">
+          <MonoBadge data={data} />
+          <div className="signal-masthead-main">
+            <p className="signal-kicker">Engineered profile · {data.technologyName}</p>
+            <h1>{data.fullName}</h1>
+            {data.headline && <p className="signal-headline">{data.headline}</p>}
+          </div>
+          <ContactLine data={data} />
+        </header>
+      </div>
+
+      <ImpactStrip metrics={metrics} />
 
       <div className="signal-rail">
         <section className="signal-module">
-          <h2>Core strengths</h2>
+          <div className="dna-module-head">
+            <h2>Capability lattice</h2>
+            <span>01</span>
+          </div>
           <div className="signal-chips">
             {data.expertise.map((s) => (
               <span key={s}>{s}</span>
@@ -26,7 +43,10 @@ export function SignalResume({ data }: { data: ResumeData }) {
         </section>
         {certs.length > 0 && (
           <section className="signal-module signal-module-accent">
-            <h2>Credentials</h2>
+            <div className="dna-module-head">
+              <h2>Verified credentials</h2>
+              <span>02</span>
+            </div>
             <ul className="signal-cred-list">
               {certs.map((c) => (
                 <li key={c}>{c}</li>
@@ -39,10 +59,11 @@ export function SignalResume({ data }: { data: ResumeData }) {
       <section className="signal-experience">
         <div className="signal-section-head">
           <h2>Impact timeline</h2>
-          <span>Selected roles</span>
+          <span>Selected delivery arcs</span>
         </div>
         {data.workExperience.map((job, i) => (
           <div className="signal-role" key={`${job.company}-${i}`}>
+            <div className="signal-role-index">{String(i + 1).padStart(2, "0")}</div>
             <div className="signal-role-meta">
               <h3>
                 {job.title}
@@ -82,6 +103,11 @@ export function SignalResume({ data }: { data: ResumeData }) {
           </div>
         )}
       </footer>
+      <SignatureSeal
+        resumeNumber={data.resumeNumber}
+        designVersion={data.designVersion}
+        dna={dna}
+      />
     </article>
   );
 }

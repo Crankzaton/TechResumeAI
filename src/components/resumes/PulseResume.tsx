@@ -1,24 +1,37 @@
 import type { ResumeData } from "@/lib/types";
-import { allCerts, ContactLine, themeVars } from "./shared";
+import { buildDesignDna, extractImpactMetrics } from "@/lib/design-dna";
+import { MotifCanvas } from "./MotifCanvas";
+import { SignatureSeal } from "./SignatureSeal";
+import { allCerts, ContactLine, ImpactStrip, MonoBadge, themeVars } from "./shared";
 
-/** Accent spine + stacked horizontal modules — energetic and clear. */
+/** Synapse Rail — neural spine + stacked proprietary modules. */
 export function PulseResume({ data }: { data: ResumeData }) {
+  const dna = buildDesignDna(data);
   const certs = allCerts(data);
+  const metrics = extractImpactMetrics(data);
+
   return (
-    <article className="tpl pulse" style={themeVars(data)} data-template="pulse">
+    <article className="tpl pulse proprietary" style={themeVars(data)} data-template="pulse">
       <div className="pulse-spine" aria-hidden />
       <div className="pulse-body">
+        <div className="pulse-motif-layer">
+          <MotifCanvas dna={dna} accent={data.themeColors.accent} muted={data.themeColors.muted} />
+        </div>
+
         <header className="pulse-header">
+          <MonoBadge data={data} />
           <div>
-            <p className="pulse-tech">{data.technologyName}</p>
+            <p className="pulse-tech">{data.technologyName} · synapse dossier</p>
             <h1>{data.fullName}</h1>
             {data.headline && <p className="pulse-headline">{data.headline}</p>}
           </div>
           <ContactLine data={data} />
         </header>
 
+        <ImpactStrip metrics={metrics} />
+
         <section className="pulse-module">
-          <div className="pulse-module-label">01 · Skills</div>
+          <div className="pulse-module-label">01 · Skills graph</div>
           <div className="pulse-skill-track">
             {data.expertise.map((s) => (
               <span key={s}>{s}</span>
@@ -27,7 +40,7 @@ export function PulseResume({ data }: { data: ResumeData }) {
         </section>
 
         <section className="pulse-module">
-          <div className="pulse-module-label">02 · Experience</div>
+          <div className="pulse-module-label">02 · Delivery nodes</div>
           {data.workExperience.map((job, i) => (
             <div className="pulse-job" key={`${job.company}-${i}`}>
               <div className="pulse-job-top">
@@ -77,6 +90,11 @@ export function PulseResume({ data }: { data: ResumeData }) {
             </ul>
           </section>
         </div>
+        <SignatureSeal
+          resumeNumber={data.resumeNumber}
+          designVersion={data.designVersion}
+          dna={dna}
+        />
       </div>
     </article>
   );

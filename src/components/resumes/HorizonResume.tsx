@@ -1,22 +1,39 @@
 import type { ResumeData } from "@/lib/types";
-import { allCerts, ContactLine, themeVars } from "./shared";
+import { buildDesignDna, extractImpactMetrics } from "@/lib/design-dna";
+import { MotifCanvas } from "./MotifCanvas";
+import { SignatureSeal } from "./SignatureSeal";
+import { allCerts, ContactLine, ImpactStrip, MonoBadge, themeVars } from "./shared";
 
-/** Full-width horizontal story bands — cinematic but still readable. */
+/** Spectrum Ribbon — angled full-bleed story bands. */
 export function HorizonResume({ data }: { data: ResumeData }) {
+  const dna = buildDesignDna(data);
   const certs = allCerts(data);
+  const metrics = extractImpactMetrics(data);
+
   return (
-    <article className="tpl horizon" style={themeVars(data)} data-template="horizon">
+    <article className="tpl horizon proprietary" style={themeVars(data)} data-template="horizon">
       <section className="horizon-band horizon-hero">
+        <div className="horizon-motif-layer">
+          <MotifCanvas dna={dna} accent={data.themeColors.accent} muted={data.themeColors.muted} />
+        </div>
+        <MonoBadge data={data} />
         <div>
-          <p className="horizon-label">{data.technologyName}</p>
+          <p className="horizon-label">{data.technologyName} spectrum</p>
           <h1>{data.fullName}</h1>
           {data.headline && <p className="horizon-tagline">{data.headline}</p>}
         </div>
         <ContactLine data={data} />
       </section>
 
+      <section className="horizon-band horizon-metrics-band">
+        <ImpactStrip metrics={metrics} />
+      </section>
+
       <section className="horizon-band horizon-skills">
-        <h2>Capabilities</h2>
+        <div className="dna-module-head">
+          <h2>Capabilities</h2>
+          <span>band · 01</span>
+        </div>
         <div className="horizon-skill-row">
           {data.expertise.map((s) => (
             <span key={s}>{s}</span>
@@ -25,7 +42,10 @@ export function HorizonResume({ data }: { data: ResumeData }) {
       </section>
 
       <section className="horizon-band">
-        <h2>Professional journey</h2>
+        <div className="dna-module-head">
+          <h2>Professional journey</h2>
+          <span>band · 02</span>
+        </div>
         <div className="horizon-roles">
           {data.workExperience.map((job, i) => (
             <div className="horizon-role" key={`${job.company}-${i}`}>
@@ -81,6 +101,11 @@ export function HorizonResume({ data }: { data: ResumeData }) {
           </ul>
         </div>
       </section>
+      <SignatureSeal
+        resumeNumber={data.resumeNumber}
+        designVersion={data.designVersion}
+        dna={dna}
+      />
     </article>
   );
 }

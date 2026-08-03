@@ -22,6 +22,7 @@ import type {
 import { SAMPLE_PROFILES } from "./sample-profiles";
 import { LAYOUT_OPTIONS } from "./default-technologies";
 import { DESIGN_TEMPLATES, nextDesignTemplate } from "./design-variants";
+import { polishBullets, polishHeadline } from "./content-polish";
 
 function pickStarterTemplate(seed: string): DesignTemplateId {
   // Prefer creative modular templates for first impression
@@ -67,6 +68,11 @@ export function resumeFromMapped(
   tech: Technology,
   extras?: Partial<ResumeInput>,
 ): ResumeInput {
+  const workExperience = mapped.workExperience.map((job) => ({
+    ...job,
+    bullets: polishBullets(job.bullets, tech.name),
+  }));
+
   return {
     source: mapped.source || "form",
     technologyId: tech.id,
@@ -75,16 +81,19 @@ export function resumeFromMapped(
     designTemplate: pickStarterTemplate(`${tech.id}:${mapped.fullName}`),
     themeColors: tech.colors,
     fullName: mapped.fullName,
-    headline: mapped.headline,
+    headline: polishHeadline(mapped.headline, tech.name, mapped.expertise),
     contact: mapped.contact,
     expertise: mapped.expertise,
     certifications: mapped.certifications,
     languages: mapped.languages,
-    workExperience: mapped.workExperience,
+    workExperience,
     education: mapped.education,
     additionalWorks: mapped.additionalWorks,
     notes: mapped.notes,
-    agentLog: [`Matched technology: ${tech.name} (from Technology field / catalog)`],
+    agentLog: [
+      `Matched technology: ${tech.name} (from Technology field / catalog)`,
+      `Applied proprietary Design DNA + content polish`,
+    ],
     ...extras,
   };
 }

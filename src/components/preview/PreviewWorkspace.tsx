@@ -272,9 +272,9 @@ export function PreviewWorkspace({
 
           <div className="redesign-box">
             <p className="intake-hint" style={{ marginBottom: "0.4rem" }}>
-              Redesign cycles through distinct modular templates (still
-              horizontal / recruiter-scannable). Technology and template can also
-              be set manually.
+              Redesign cycles proprietary compositions (Orbital Mast, Lattice
+              Grid, Spectrum Ribbon, Folio Split, Synapse Rail) — each with
+              unique Design DNA geometry recruiters cannot recreate in Canva.
             </p>
             <div className="field-grid" style={{ marginBottom: "0.5rem" }}>
               <label>

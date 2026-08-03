@@ -9,33 +9,33 @@ export const DESIGN_TEMPLATES: {
 }[] = [
   {
     id: "classic",
-    name: "Classic Navigator",
-    pitch: "Platform sidebar + experience cards",
+    name: "Platform Classic",
+    pitch: "Sidebar navigator — baseline product system",
   },
   {
     id: "signal",
-    name: "Signal Masthead",
-    pitch: "Bold header band, modular skill rails",
+    name: "Orbital Mast",
+    pitch: "Procedural orbit geometry + impact rails",
   },
   {
     id: "mosaic",
-    name: "Mosaic Modules",
-    pitch: "Tile grid for skills & certs, clean timeline",
+    name: "Lattice Grid",
+    pitch: "Skewed tessellation modules (hard to clone)",
   },
   {
     id: "horizon",
-    name: "Horizon Bands",
-    pitch: "Full-width horizontal story bands",
+    name: "Spectrum Ribbon",
+    pitch: "Angled full-bleed story bands",
   },
   {
     id: "atelier",
-    name: "Atelier Editorial",
-    pitch: "Large type, asymmetric modular columns",
+    name: "Folio Split",
+    pitch: "Editorial asymmetric glyph column",
   },
   {
     id: "pulse",
-    name: "Pulse Rail",
-    pitch: "Accent spine with stacked content modules",
+    name: "Synapse Rail",
+    pitch: "Neural spine + stacked delivery nodes",
   },
 ];
 

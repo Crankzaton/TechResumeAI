@@ -1,4 +1,8 @@
+import type { CSSProperties } from "react";
 import type { ResumeData } from "@/lib/types";
+import { buildDesignDna, extractImpactMetrics } from "@/lib/design-dna";
+import { SignatureSeal } from "./SignatureSeal";
+import { ImpactStrip, MonoBadge } from "./shared";
 
 function certs(
   data: ResumeData,
@@ -9,6 +13,8 @@ function certs(
 
 export function ThemedResume({ data }: { data: ResumeData }) {
   const c = data.themeColors;
+  const dna = buildDesignDna({ ...data, designTemplate: "classic" });
+  const metrics = extractImpactMetrics(data);
   const style = {
     ["--r-bg" as string]: c.background,
     ["--r-surface" as string]: c.surface,
@@ -19,7 +25,7 @@ export function ThemedResume({ data }: { data: ResumeData }) {
     ["--r-card-h" as string]: c.cardHeader,
     ["--r-card-b" as string]: c.cardBody,
     ["--r-sidebar" as string]: c.sidebar,
-  } as React.CSSProperties;
+  } as CSSProperties;
 
   const mainline = certs(data, "mainline");
   const micro = certs(data, "micro");
@@ -28,14 +34,16 @@ export function ThemedResume({ data }: { data: ResumeData }) {
 
   return (
     <article
-      className={`themed-resume layout-${data.layout}`}
+      className={`themed-resume layout-${data.layout} proprietary`}
       style={style}
       data-tech={data.technologyName}
+      data-template="classic"
     >
       <div className="tr-accent-edge" aria-hidden />
 
       <header className="tr-header">
         <div>
+          <MonoBadge data={data} />
           <p className="tr-tech-label">{data.technologyName}</p>
           <h1 className="tr-name">{data.fullName}</h1>
           {data.headline && <p className="tr-headline">{data.headline}</p>}
@@ -52,6 +60,8 @@ export function ThemedResume({ data }: { data: ResumeData }) {
           {data.contact.website && <span>{data.contact.website}</span>}
         </div>
       </header>
+
+      <ImpactStrip metrics={metrics} />
 
       <div className="tr-body">
         <aside className="tr-aside">
@@ -201,6 +211,11 @@ export function ThemedResume({ data }: { data: ResumeData }) {
           )}
         </main>
       </div>
+      <SignatureSeal
+        resumeNumber={data.resumeNumber}
+        designVersion={data.designVersion}
+        dna={dna}
+      />
     </article>
   );
 }

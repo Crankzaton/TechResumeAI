@@ -1,15 +1,25 @@
 import type { ResumeData } from "@/lib/types";
-import { allCerts, ContactLine, themeVars } from "./shared";
+import { buildDesignDna, extractImpactMetrics } from "@/lib/design-dna";
+import { MotifCanvas } from "./MotifCanvas";
+import { SignatureSeal } from "./SignatureSeal";
+import { allCerts, ContactLine, ImpactStrip, MonoBadge, themeVars } from "./shared";
 
-/** Editorial asymmetric layout — large type, modular columns. */
+/** Folio Split — editorial asymmetric composition with glyph column. */
 export function AtelierResume({ data }: { data: ResumeData }) {
+  const dna = buildDesignDna(data);
   const certs = allCerts(data);
+  const metrics = extractImpactMetrics(data);
+
   return (
-    <article className="tpl atelier" style={themeVars(data)} data-template="atelier">
+    <article className="tpl atelier proprietary" style={themeVars(data)} data-template="atelier">
       <div className="atelier-frame">
         <aside className="atelier-aside">
+          <MonoBadge data={data} />
           <p className="atelier-mark">{data.technologyName}</p>
           <ContactLine data={data} />
+          <div className="atelier-motif-mini">
+            <MotifCanvas dna={dna} accent={data.themeColors.accent} muted={data.themeColors.muted} />
+          </div>
           <section>
             <h2>Toolkit</h2>
             <ol className="atelier-tools">
@@ -39,8 +49,13 @@ export function AtelierResume({ data }: { data: ResumeData }) {
             {data.headline && <p>{data.headline}</p>}
           </header>
 
+          <ImpactStrip metrics={metrics} />
+
           <section>
-            <h2>Selected work</h2>
+            <div className="dna-module-head">
+              <h2>Selected work</h2>
+              <span>folio</span>
+            </div>
             {data.workExperience.map((job, i) => (
               <div className="atelier-job" key={`${job.company}-${i}`}>
                 <div className="atelier-job-top">
@@ -88,6 +103,11 @@ export function AtelierResume({ data }: { data: ResumeData }) {
           </section>
         </main>
       </div>
+      <SignatureSeal
+        resumeNumber={data.resumeNumber}
+        designVersion={data.designVersion}
+        dna={dna}
+      />
     </article>
   );
 }
