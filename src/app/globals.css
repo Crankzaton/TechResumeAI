@@ -617,10 +617,12 @@ textarea {
   flex-wrap: wrap;
   gap: 0.4rem;
   padding: 0.35rem;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.92);
   border: 1px solid var(--line);
   border-radius: 999px;
   width: fit-content;
+  position: relative;
+  z-index: 5;
 }
 
 .admin-tabs button {
@@ -633,6 +635,22 @@ textarea {
   font-weight: 650;
   color: var(--steel);
   cursor: pointer;
+  pointer-events: auto;
+  position: relative;
+  z-index: 6;
+}
+
+.site-header nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  max-width: 100%;
+}
+
+.intake-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
 .admin-tabs button.active {

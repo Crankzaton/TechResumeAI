@@ -40,13 +40,22 @@ const tabs = [
   "What I need",
 ] as const;
 
-export function AdminConsole() {
+export function AdminConsole({
+  initial,
+}: {
+  initial?: {
+    technologies: Technology[];
+    forms: FormConnection[];
+    resumes: ResumeRow[];
+    agent: AgentPayload;
+  };
+}) {
   const router = useRouter();
   const [tab, setTab] = useState<(typeof tabs)[number]>("Overview");
-  const [techs, setTechs] = useState<Technology[]>([]);
-  const [forms, setForms] = useState<FormConnection[]>([]);
-  const [resumes, setResumes] = useState<ResumeRow[]>([]);
-  const [agent, setAgent] = useState<AgentPayload | null>(null);
+  const [techs, setTechs] = useState<Technology[]>(initial?.technologies || []);
+  const [forms, setForms] = useState<FormConnection[]>(initial?.forms || []);
+  const [resumes, setResumes] = useState<ResumeRow[]>(initial?.resumes || []);
+  const [agent, setAgent] = useState<AgentPayload | null>(initial?.agent || null);
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -59,35 +68,34 @@ export function AdminConsole() {
     background: "#0f172a",
   });
 
-  const [formForm, setFormForm] = useState({
-    name: "",
-    technologyId: "",
-    googleFormUrl: "",
-    fieldMapNotes: "",
-  });
-
   const [agentForm, setAgentForm] = useState({
-    freelancerName: "",
-    notifyEmail: "",
-    fromEmail: "",
-    publicBaseUrl: "",
-    autoGenerate: true,
-    autoEmail: true,
-    host: "",
-    port: 587,
-    user: "",
+    freelancerName: initial?.agent?.settings.freelancerName || "",
+    notifyEmail: initial?.agent?.settings.notifyEmail || "",
+    fromEmail: initial?.agent?.settings.fromEmail || "",
+    publicBaseUrl: initial?.agent?.settings.publicBaseUrl || "",
+    autoGenerate: initial?.agent?.settings.autoGenerate ?? true,
+    autoEmail: initial?.agent?.settings.autoEmail ?? true,
+    host: initial?.agent?.settings.smtp.host || "",
+    port: initial?.agent?.settings.smtp.port || 587,
+    user: initial?.agent?.settings.smtp.user || "",
     pass: "",
-    secure: false,
-    odEnabled: false,
-    odClientId: "",
+    secure: initial?.agent?.settings.smtp.secure || false,
+    odEnabled: initial?.agent?.settings.oneDrive?.enabled || false,
+    odClientId: initial?.agent?.settings.oneDrive?.clientId || "",
     odClientSecret: "",
-    odTenantId: "common",
+    odTenantId: initial?.agent?.settings.oneDrive?.tenantId || "common",
     odRefreshToken: "",
-    odFolder: "TechResumeAI",
+    odFolder: initial?.agent?.settings.oneDrive?.folderPath || "TechResumeAI",
   });
 
   const [redesignId, setRedesignId] = useState("");
   const [redesignTech, setRedesignTech] = useState("");
+  const [formForm, setFormForm] = useState({
+    name: "",
+    technologyId: initial?.technologies?.[0]?.id || "",
+    googleFormUrl: "",
+    fieldMapNotes: "",
+  });
 
   async function refresh() {
     const [t, f, r, a] = await Promise.all([
@@ -125,7 +133,17 @@ export function AdminConsole() {
   }
 
   useEffect(() => {
-    refresh().catch((e) => setError(String(e)));
+    let cancelled = false;
+    (async () => {
+      try {
+        await refresh();
+      } catch (e) {
+        if (!cancelled) setError(String(e));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -279,18 +297,28 @@ export function AdminConsole() {
 
   return (
     <div className="admin-console">
-      <div className="admin-tabs no-print">
+      <div className="admin-tabs no-print" role="tablist">
         {tabs.map((t) => (
           <button
             key={t}
             type="button"
+            role="tab"
+            aria-selected={tab === t}
             className={tab === t ? "active" : ""}
-            onClick={() => setTab(t)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setTab(t);
+            }}
           >
             {t}
           </button>
         ))}
       </div>
+      <p className="muted" style={{ marginTop: "-0.35rem" }}>
+        Active tab: <strong>{tab}</strong>
+        {techs.length ? ` · ${techs.length} technologies loaded` : " · loading…"}
+      </p>
 
       {(message || error) && (
         <p className={error ? "form-error" : "form-success"}>

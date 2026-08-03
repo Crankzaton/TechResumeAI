@@ -120,7 +120,9 @@ export function mapGoogleFormPayload(body: Record<string, unknown>): {
     return "";
   };
 
-  const phones = splitList(get("phones", "Phone", "Phone Numbers", "Mobile"));
+  const phones = splitList(
+    get("phones", "Phone", "Phone Numbers", "Mobile", "Mobile / Phone"),
+  );
   const mainline = parseCertifications(
     get(
       "certifications_mainline",
@@ -166,7 +168,7 @@ export function mapGoogleFormPayload(body: Record<string, unknown>): {
     certifications: [...mainline, ...micro, ...other],
     languages: parseLanguages(get("languages", "Languages")),
     workExperience: parseWorkExperience(
-      get("workExperience", "Work Experience", "Experience"),
+      get("workExperience", "Experience", "Work Experience"),
     ),
     education: parseEducation(get("education", "Education")),
     additionalWorks: splitList(
@@ -175,6 +177,7 @@ export function mapGoogleFormPayload(body: Record<string, unknown>): {
         "Additional Works",
         "Projects",
         "Other Experience",
+        "Resume / LinkedIn text (paste)",
       ),
     ).map((description) => ({ description })),
     notes: asString(get("notes", "Notes", "Anything else")) || undefined,
@@ -196,7 +199,7 @@ export function normalizeFormBody(body: Record<string, unknown>) {
   if (body.fullName || body.source === "form" || body.source === "sample") {
     const workExperience = Array.isArray(body.workExperience)
       ? (body.workExperience as WorkExperience[])
-      : parseWorkExperience(body.workExperience);
+      : parseWorkExperience(body.workExperience || body.experience);
     const education = Array.isArray(body.education)
       ? (body.education as Education[])
       : parseEducation(body.education);
@@ -220,7 +223,9 @@ export function normalizeFormBody(body: Record<string, unknown>) {
         phones: Array.isArray((body.contact as { phones?: string[] })?.phones)
           ? (body.contact as { phones: string[] }).phones
           : splitList(
-              body.phones || (body.contact as { phones?: string })?.phones,
+              body.phones ||
+                body.mobile ||
+                (body.contact as { phones?: string })?.phones,
             ),
         email:
           asString((body.contact as { email?: string })?.email) ||
@@ -240,7 +245,7 @@ export function normalizeFormBody(body: Record<string, unknown>) {
       },
       expertise: Array.isArray(body.expertise)
         ? (body.expertise as string[]).map(String)
-        : splitList(body.expertise),
+        : splitList(body.expertise || body.skills),
       certifications,
       languages,
       workExperience,
@@ -252,7 +257,10 @@ export function normalizeFormBody(body: Record<string, unknown>) {
           })),
       notes: asString(body.notes) || undefined,
       themeHint: asString(
-        body.theme || body.technology || body.technologyName,
+        body.theme ||
+          body.technology ||
+          body.technologyName ||
+          body.Technology,
       ),
     };
   }

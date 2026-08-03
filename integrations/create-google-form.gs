@@ -1,20 +1,15 @@
 /**
- * ONE-TIME SETUP — run this while signed into gokulnathgoku23@gmail.com
+ * TechResumeAI — Google Form creator + webhook
  *
- * How to run:
- * 1. Go to https://script.google.com → New project
- * 2. Paste this entire file
- * 3. Set Script Properties (Project Settings → Script properties):
- *      WEBHOOK_URL  = https://YOUR_DEPLOYED_APP/api/webhook/google-forms
- *      WEBHOOK_SECRET = (optional shared secret)
- *      NOTIFY_EMAIL = gokulnathgoku23@gmail.com
- * 4. Select function createTechResumeForm → Run
- * 5. Approve Google permissions
- * 6. Check Execution log / email for the public form link
- * 7. Share ONLY that form link with customers
+ * IMPORTANT:
+ * - Paste this file ALONE into Code.gs
+ * - Do NOT wrap it inside function myFunction() { ... }
+ * - In the function dropdown, choose createTechResumeForm → Run
  *
- * The form includes a required "Technology" dropdown used to pick the resume theme.
- * An On form submit trigger is installed automatically.
+ * Script Properties (Project Settings):
+ *   WEBHOOK_URL    = https://characters-governing-stylus-yrs.trycloudflare.com/api/webhook/google-forms
+ *   WEBHOOK_SECRET = techresume-secret-2026
+ *   NOTIFY_EMAIL   = gokulnathgoku23@gmail.com
  */
 
 var TECH_CHOICES = [
@@ -35,18 +30,16 @@ function createTechResumeForm() {
   var props = PropertiesService.getScriptProperties();
   var webhookUrl = props.getProperty("WEBHOOK_URL");
   if (!webhookUrl) {
-    throw new Error(
-      "Set Script Property WEBHOOK_URL to your deployed /api/webhook/google-forms URL first",
-    );
+    throw new Error("Set Script Property WEBHOOK_URL first");
   }
 
   var form = FormApp.create("TechResumeAI — Client Resume Intake");
   form.setDescription(
-    "Fill this form once. Your technology-themed resume will be prepared automatically.\n" +
-      "Important: choose the Technology that matches your stack.",
+    "Fill this once. Pick your Technology — that chooses the resume theme.\n" +
+      "You can type details OR paste resume/LinkedIn text in the attachment text box.",
   );
   form.setConfirmationMessage(
-    "Thanks! Your details were submitted. The freelancer will share your resume shortly.",
+    "Thanks! Your resume is being prepared. The freelancer will share it shortly.",
   );
   form.setCollectEmail(true);
   form.setProgressBar(true);
@@ -54,23 +47,34 @@ function createTechResumeForm() {
   form
     .addListItem()
     .setTitle("Technology")
-    .setHelpText(
-      "Required — this chooses which themed resume design to generate.",
-    )
+    .setHelpText("Required — chooses which themed resume to generate.")
     .setChoiceValues(TECH_CHOICES)
     .setRequired(true);
 
   form.addTextItem().setTitle("Full Name").setRequired(true);
-  form.addTextItem().setTitle("Headline").setHelpText("e.g. ServiceNow Developer | CIS-ITSM");
-  form.addTextItem().setTitle("Phone Numbers");
+  form.addTextItem().setTitle("Mobile / Phone").setRequired(true);
+  form.addTextItem().setTitle("Headline").setHelpText("Optional — e.g. Developer | CIS-ITSM");
   form.addTextItem().setTitle("LinkedIn").setHelpText("linkedin.com/in/...");
   form.addTextItem().setTitle("Location");
 
   form
     .addParagraphTextItem()
-    .setTitle("Expertise")
+    .setTitle("Skills")
     .setHelpText("One skill per line")
     .setRequired(true);
+
+  form
+    .addParagraphTextItem()
+    .setTitle("Experience")
+    .setHelpText(
+      "Format:\nTitle | Company | Start - End\n- bullet\n- bullet\n\n(blank line between roles)",
+    )
+    .setRequired(true);
+
+  form
+    .addParagraphTextItem()
+    .setTitle("Education")
+    .setHelpText("Degree | Institution | Years");
 
   form
     .addParagraphTextItem()
@@ -80,35 +84,32 @@ function createTechResumeForm() {
   form
     .addParagraphTextItem()
     .setTitle("Languages")
-    .setHelpText("Format: English: Native Proficiency");
+    .setHelpText("English: Native Proficiency");
 
   form
     .addParagraphTextItem()
-    .setTitle("Work Experience")
+    .setTitle("Resume / LinkedIn text (paste)")
     .setHelpText(
-      "Use blocks:\nTitle | Company | Start - End\n- bullet\n- bullet\n\n(blank line between roles)",
-    )
-    .setRequired(true);
+      "Optional — paste full resume or LinkedIn About/Experience text. Used if Skills/Experience are short.",
+    );
 
-  form
-    .addParagraphTextItem()
-    .setTitle("Education")
-    .setHelpText("Degree | Institution | Years\nStream");
-
-  form.addParagraphTextItem().setTitle("Additional Works");
   form.addParagraphTextItem().setTitle("Notes");
 
-  // Linked sheet for responses
+  try {
+    form
+      .addFileUploadItem()
+      .setTitle("Resume file (optional)")
+      .setHelpText("PDF/DOC/DOCX if available. Also paste text above for best results.")
+      .setMaxFiles(1);
+  } catch (err) {
+    Logger.log("File upload item skipped: " + err);
+  }
+
   var ss = SpreadsheetApp.create("TechResumeAI — Form Responses");
   form.setDestination(FormApp.DestinationType.SPREADSHEET, ss.getId());
 
-  // Install submit trigger on this form
-  ScriptApp.newTrigger("onFormSubmit")
-    .forForm(form)
-    .onFormSubmit()
-    .create();
+  ScriptApp.newTrigger("onFormSubmit").forForm(form).onFormSubmit().create();
 
-  // Persist form ids
   props.setProperty("FORM_ID", form.getId());
   props.setProperty("FORM_EDIT_URL", form.getEditUrl());
   props.setProperty("FORM_PUBLISHED_URL", form.getPublishedUrl());
@@ -138,20 +139,14 @@ function createTechResumeForm() {
     );
   }
 
-  return {
-    publishedUrl: published,
-    editUrl: edit,
-    sheetUrl: ss.getUrl(),
-  };
+  return { publishedUrl: published, editUrl: edit, sheetUrl: ss.getUrl() };
 }
 
 function onFormSubmit(e) {
   var props = PropertiesService.getScriptProperties();
   var webhookUrl = props.getProperty("WEBHOOK_URL");
   var secret = props.getProperty("WEBHOOK_SECRET");
-  if (!webhookUrl) {
-    throw new Error("WEBHOOK_URL missing in Script Properties");
-  }
+  if (!webhookUrl) throw new Error("WEBHOOK_URL missing");
 
   var named = e.namedValues || {};
   var payload = {};
@@ -160,23 +155,36 @@ function onFormSubmit(e) {
     payload[key] = Array.isArray(values) ? values.join("\n") : values;
   });
 
-  // Canonical aliases
   payload.Technology = first(named, ["Technology", "Technology Theme"]);
   payload.technologyName = payload.Technology;
   payload.theme = payload.Technology;
   payload.fullName = first(named, ["Full Name", "Name"]);
-  payload.email = first(named, ["Email Address", "Email"]) || (e.response && e.response.getRespondentEmail && e.response.getRespondentEmail());
-  payload.phones = first(named, ["Phone Numbers", "Phone"]);
+  payload.email =
+    first(named, ["Email Address", "Email"]) ||
+    (e.response && e.response.getRespondentEmail && e.response.getRespondentEmail());
+  payload.phones = first(named, ["Mobile / Phone", "Phone Numbers", "Phone"]);
   payload.linkedin = first(named, ["LinkedIn"]);
   payload.headline = first(named, ["Headline"]);
   payload.location = first(named, ["Location"]);
-  payload.expertise = first(named, ["Expertise", "Skills"]);
+  payload.expertise = first(named, ["Skills", "Expertise"]);
   payload.certifications_mainline = first(named, ["Certifications"]);
   payload.languages = first(named, ["Languages"]);
-  payload.workExperience = first(named, ["Work Experience", "Experience"]);
+  payload.workExperience = first(named, ["Experience", "Work Experience"]);
   payload.education = first(named, ["Education"]);
-  payload.additionalWorks = first(named, ["Additional Works", "Projects"]);
   payload.notes = first(named, ["Notes"]);
+  payload.pastedResume = first(named, [
+    "Resume / LinkedIn text (paste)",
+    "Resume text",
+    "Pasted resume",
+  ]);
+
+  // If paste box has content and experience is thin, prefer pasted content as experience seed
+  if (payload.pastedResume && (!payload.workExperience || payload.workExperience.length < 40)) {
+    payload.workExperience = payload.pastedResume;
+  }
+  if (payload.pastedResume && (!payload.expertise || payload.expertise.length < 10)) {
+    payload.additionalWorks = payload.pastedResume;
+  }
 
   var headers = { "Content-Type": "application/json" };
   if (secret) headers["x-webhook-secret"] = secret;
@@ -201,7 +209,6 @@ function first(named, keys) {
   return "";
 }
 
-/** Helper: print stored form URLs again */
 function showFormLinks() {
   var props = PropertiesService.getScriptProperties();
   Logger.log("Published: " + props.getProperty("FORM_PUBLISHED_URL"));
