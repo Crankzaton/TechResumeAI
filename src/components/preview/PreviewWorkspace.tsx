@@ -156,7 +156,7 @@ export function PreviewWorkspace({
     setLayout(nextLay);
     setVariantIndex((v) => v + 1);
     const meta = templateMeta(nextTpl);
-    setMsg(`Redesign → ${meta.name} + ${nextLay}`);
+    setMsg(`Redesign → ${meta.name}`);
   }
 
   function patchResume(patch: Partial<ResumeData>) {
@@ -257,24 +257,25 @@ export function PreviewWorkspace({
   return (
     <>
       <div className="preview-toolbar no-print">
-        <div>
-          <p className="eyebrow">
-            {liveResume.resumeNumber} · v{liveResume.designVersion || 1} ·{" "}
-            {liveResume.technologyName} · {tpl.name} · {liveResume.layout}
+        <div className="preview-toolbar-meta">
+          <p className="eyebrow" title={`${liveResume.resumeNumber} · ${tpl.name} · ${liveResume.layout}`}>
+            <span>{liveResume.resumeNumber}</span>
+            <span>v{liveResume.designVersion || 1}</span>
+            <span className="eyebrow-clip">{liveResume.technologyName}</span>
+            <span className="eyebrow-clip">{tpl.name}</span>
           </p>
           <h1>{liveResume.fullName}</h1>
           <p className="meta">
-            Status: <strong>{resume.status}</strong> · {tpl.pitch}
+            Status: <strong>{resume.status}</strong>
           </p>
-          {msg && <p className="form-success">{msg}</p>}
-          {error && <p className="form-error">{error}</p>}
+          <div className="preview-toast-slot" aria-live="polite">
+            {msg ? <p className="form-success preview-toast">{msg}</p> : null}
+            {error ? <p className="form-error preview-toast">{error}</p> : null}
+          </div>
         </div>
 
-        <div
-          className="toolbar-actions"
-          style={{ flexDirection: "column", alignItems: "stretch" }}
-        >
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+        <div className="toolbar-actions preview-controls">
+          <div className="preview-action-row">
             <button
               type="button"
               className="ghost-btn"
@@ -309,12 +310,11 @@ export function PreviewWorkspace({
           </div>
 
           <div className="redesign-box">
-            <p className="intake-hint" style={{ marginBottom: "0.4rem" }}>
-              Layout accent remaps the full color system. Redesign cycles
-              proprietary templates. Edit sections on the left / click resume
-              blocks.
+            <p className="intake-hint redesign-hint">
+              Layout accent remaps colors. Redesign cycles templates. Edit
+              sections on the left.
             </p>
-            <div className="field-grid" style={{ marginBottom: "0.5rem" }}>
+            <div className="field-grid redesign-fields">
               <label>
                 Technology
                 <select
@@ -358,17 +358,21 @@ export function PreviewWorkspace({
                 </select>
               </label>
             </div>
-            {techKey === OTHER && (
-              <label style={{ marginBottom: "0.5rem" }}>
-                Custom technology name
-                <input
-                  value={otherName}
-                  onChange={(e) => setOtherName(e.target.value)}
-                  placeholder="e.g. Snowflake, Golang"
-                />
-              </label>
-            )}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+            <div
+              className={`redesign-other-slot${techKey === OTHER ? " open" : ""}`}
+            >
+              {techKey === OTHER ? (
+                <label>
+                  Custom technology name
+                  <input
+                    value={otherName}
+                    onChange={(e) => setOtherName(e.target.value)}
+                    placeholder="e.g. Snowflake, Golang"
+                  />
+                </label>
+              ) : null}
+            </div>
+            <div className="preview-action-row">
               <button
                 type="button"
                 className="primary-btn"
