@@ -1,7 +1,11 @@
 import type { ResumeData } from "@/lib/types";
-import { ComposableResume, type SectionHandlers } from "./ComposableResume";
+import { ensureSectionLayout } from "@/lib/resume-sections";
+import {
+  ComposableResume,
+  type SectionHandlers,
+} from "./ComposableResume";
 
-/** All technologies render through the composable engine (skins + section order). */
+/** Composable engine with structurally distinct templates per designTemplate. */
 export function ResumeRenderer({
   data,
   handlers,
@@ -9,5 +13,10 @@ export function ResumeRenderer({
   data: ResumeData;
   handlers?: SectionHandlers;
 }) {
-  return <ComposableResume data={data} handlers={handlers} />;
+  return (
+    <ComposableResume
+      data={{ ...data, sectionLayout: ensureSectionLayout(data) }}
+      handlers={handlers}
+    />
+  );
 }

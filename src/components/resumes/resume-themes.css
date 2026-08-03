@@ -1702,3 +1702,148 @@
 .tpl.composable.layout-terminal .compose-kicker::before {
   content: "> ";
 }
+
+/* Structural layouts — Redesign must feel like a new design */
+.structure-classic-grid {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.structure-aside .compose-block {
+  margin-bottom: 8px;
+}
+
+.structure-signal-rail {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 10px;
+  margin: 8px 0;
+}
+
+.structure-signal .signal-mast .compose-header {
+  background: linear-gradient(105deg, var(--r-sidebar), color-mix(in srgb, var(--r-accent) 22%, var(--r-sidebar)));
+  padding: 16px;
+  margin: 0 0 8px;
+  border-bottom: 4px solid var(--r-accent);
+}
+
+.signal-indexed-job {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--r-muted) 22%, transparent);
+}
+
+.signal-idx {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 800;
+  color: var(--r-accent);
+  font-size: 12px;
+}
+
+.compose-block-accent {
+  background: color-mix(in srgb, var(--r-accent) 14%, var(--r-surface));
+  border-left-color: var(--r-accent);
+}
+
+.structure-mosaic {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.structure-mosaic .mosaic-span-2 {
+  grid-column: span 2;
+}
+
+.structure-mosaic .compose-section {
+  min-height: 72px;
+}
+
+.structure-horizon .horizon-band-block {
+  padding: 12px 4px;
+  border-bottom: 1px solid color-mix(in srgb, var(--r-muted) 22%, transparent);
+}
+
+.structure-horizon .horizon-band-block:first-child {
+  background: linear-gradient(90deg, var(--r-sidebar), color-mix(in srgb, var(--r-accent) 16%, var(--r-bg)));
+  padding: 18px 14px;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), 0 100%);
+  margin-bottom: 6px;
+}
+
+.structure-atelier {
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  gap: 0;
+  min-height: 280px;
+}
+
+.atelier-aside {
+  background: var(--r-sidebar);
+  padding: 16px 12px;
+  border-right: 1px solid color-mix(in srgb, var(--r-accent) 35%, transparent);
+}
+
+.atelier-main {
+  padding: 18px 20px;
+}
+
+.atelier-main > .compose-section:first-child h1 {
+  margin: 0;
+  font-size: 40px;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.atelier-numbered {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.atelier-numbered li {
+  display: flex;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--r-muted) 20%, transparent);
+  font-size: 12px;
+}
+
+.atelier-numbered span {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  color: var(--r-accent);
+  font-weight: 700;
+}
+
+.structure-pulse .pulse-mod {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--r-accent);
+  background: color-mix(in srgb, var(--r-surface) 85%, transparent);
+}
+
+.pulse-mod-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--r-accent);
+  margin-bottom: 6px;
+}
+
+@media (max-width: 900px) {
+  .structure-classic-grid,
+  .structure-signal-rail,
+  .structure-atelier,
+  .structure-mosaic {
+    grid-template-columns: 1fr;
+  }
+  .structure-mosaic .mosaic-span-2 {
+    grid-column: span 1;
+  }
+}

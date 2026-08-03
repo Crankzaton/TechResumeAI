@@ -9,9 +9,9 @@ import {
   colorVariant,
   DESIGN_TEMPLATES,
   layoutAccentPalette,
-  nextDesignTemplate,
   nextLayout,
 } from "@/lib/design-variants";
+import { pickContrastingTemplate } from "@/lib/ai-enhance";
 import { ensureSectionLayout } from "@/lib/resume-sections";
 import type {
   DesignTemplateId,
@@ -149,14 +149,49 @@ export function PreviewWorkspace({
   }
 
   function redesign() {
+    // Jump to a clearly different structural template (skip adjacent twin)
+    const nextTpl = pickContrastingTemplate(designTemplate);
     const used = resume.previousLayouts || [];
-    const nextTpl = nextDesignTemplate(designTemplate);
     const nextLay = nextLayout(layout, used);
     setDesignTemplate(nextTpl);
     setLayout(nextLay);
     setVariantIndex((v) => v + 1);
+    // Nudge section order so composition feels redesigned, not recolored
+    setResume((r) => {
+      const sections = ensureSectionLayout(r);
+      const header = sections.filter((s) => s.kind === "header");
+      const rest = sections.filter((s) => s.kind !== "header");
+      const rotated = [...rest.slice(1), ...rest.slice(0, 1)];
+      return { ...r, sectionLayout: [...header, ...rotated] };
+    });
     const meta = templateMeta(nextTpl);
-    setMsg(`Redesign → ${meta.name}`);
+    setMsg(`New layout → ${meta.name}`);
+  }
+
+  function enhanceWithAi() {
+    startTransition(async () => {
+      try {
+        setError(null);
+        await persistLiveDesign();
+        const res = await fetch(`/api/resumes/${resume.id}/enhance`, {
+          method: "POST",
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "AI enhance failed");
+        const next = data.resume as ResumeData;
+        setResume({ ...next, sectionLayout: ensureSectionLayout(next) });
+        if (next.designTemplate) setDesignTemplate(next.designTemplate);
+        if (next.layout) setLayout(next.layout);
+        setVariantIndex((v) => v + 1);
+        setMsg(
+          data.message ||
+            `AI enhanced → ${templateMeta(next.designTemplate).name}`,
+        );
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "AI enhance failed");
+      }
+    });
   }
 
   function patchResume(patch: Partial<ResumeData>) {
@@ -255,10 +290,13 @@ export function PreviewWorkspace({
   }
 
   return (
-    <>
-      <div className="preview-toolbar no-print">
+    <div className="preview-workspace no-print-parent">
+      <header className="preview-topbar no-print">
         <div className="preview-toolbar-meta">
-          <p className="eyebrow" title={`${liveResume.resumeNumber} · ${tpl.name} · ${liveResume.layout}`}>
+          <p
+            className="eyebrow"
+            title={`${liveResume.resumeNumber} · ${tpl.name} · ${liveResume.layout}`}
+          >
             <span>{liveResume.resumeNumber}</span>
             <span>v{liveResume.designVersion || 1}</span>
             <span className="eyebrow-clip">{liveResume.technologyName}</span>
@@ -268,14 +306,16 @@ export function PreviewWorkspace({
           <p className="meta">
             Status: <strong>{resume.status}</strong>
           </p>
-          <div className="preview-toast-slot" aria-live="polite">
-            {msg ? <p className="form-success preview-toast">{msg}</p> : null}
-            {error ? <p className="form-error preview-toast">{error}</p> : null}
-          </div>
         </div>
+        <div className="preview-toast-slot" aria-live="polite">
+          {msg ? <p className="form-success preview-toast">{msg}</p> : null}
+          {error ? <p className="form-error preview-toast">{error}</p> : null}
+        </div>
+      </header>
 
-        <div className="toolbar-actions preview-controls">
-          <div className="preview-action-row">
+      <div className="preview-shell">
+        <div className="preview-main-col">
+          <div className="preview-action-bar no-print">
             <button
               type="button"
               className="ghost-btn"
@@ -303,16 +343,55 @@ export function PreviewWorkspace({
               type="button"
               className="primary-btn"
               disabled={pending}
+              onClick={enhanceWithAi}
+            >
+              {pending ? "Enhancing…" : "Enhance using AI"}
+            </button>
+            <button
+              type="button"
+              className="ghost-btn"
+              disabled={pending}
               onClick={markDelivered}
             >
               Mark delivered
             </button>
           </div>
 
+          <div className={`preview-edit-grid${editMode ? " editing" : ""}`}>
+            {editMode && (
+              <SectionEditorPanel
+                sections={liveResume.sectionLayout || []}
+                selectedId={selectedSection}
+                onSelect={setSelectedSection}
+                onChange={setSections}
+                resume={liveResume}
+                onResumePatch={patchResume}
+              />
+            )}
+            <div className="preview-stage">
+              <div className="resume-sheet" id="resume-print-root">
+                <ResumeRenderer
+                  data={liveResume}
+                  handlers={
+                    editMode
+                      ? {
+                          editMode: true,
+                          selectedId: selectedSection,
+                          onSelect: setSelectedSection,
+                        }
+                      : undefined
+                  }
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside className="preview-side-controls no-print">
           <div className="redesign-box">
             <p className="intake-hint redesign-hint">
-              Layout accent remaps colors. Redesign cycles templates. Edit
-              sections on the left.
+              Redesign switches a full structural layout (not just colors). AI
+              Enhance rewrites copy and picks a new composition.
             </p>
             <div className="field-grid redesign-fields">
               <label>
@@ -391,37 +470,8 @@ export function PreviewWorkspace({
               </button>
             </div>
           </div>
-        </div>
+        </aside>
       </div>
-
-      <div className={`preview-edit-grid${editMode ? " editing" : ""}`}>
-        {editMode && (
-          <SectionEditorPanel
-            sections={liveResume.sectionLayout || []}
-            selectedId={selectedSection}
-            onSelect={setSelectedSection}
-            onChange={setSections}
-            resume={liveResume}
-            onResumePatch={patchResume}
-          />
-        )}
-        <div className="preview-stage">
-          <div className="resume-sheet" id="resume-print-root">
-            <ResumeRenderer
-              data={liveResume}
-              handlers={
-                editMode
-                  ? {
-                      editMode: true,
-                      selectedId: selectedSection,
-                      onSelect: setSelectedSection,
-                    }
-                  : undefined
-              }
-            />
-          </div>
-        </div>
-      </div>
-    </>
+    </div>
   );
 }
