@@ -13,8 +13,11 @@ import type {
 
 type ResumeRow = {
   id: string;
+  resumeNumber?: string;
   fullName: string;
   technologyName: string;
+  layout?: string;
+  designVersion?: number;
   status: string;
   source: string;
   createdAt: string;
@@ -24,10 +27,18 @@ type ResumeRow = {
 type AgentPayload = {
   settings: AgentSettings;
   smtpConfigured: boolean;
+  oneDriveConfigured?: boolean;
   events: AgentEvent[];
 };
 
-const tabs = ["Overview", "Technologies", "Google Forms", "Agent", "Orders"] as const;
+const tabs = [
+  "Overview",
+  "Technologies",
+  "Google Forms",
+  "Agent",
+  "Orders",
+  "What I need",
+] as const;
 
 export function AdminConsole() {
   const router = useRouter();
@@ -67,7 +78,16 @@ export function AdminConsole() {
     user: "",
     pass: "",
     secure: false,
+    odEnabled: false,
+    odClientId: "",
+    odClientSecret: "",
+    odTenantId: "common",
+    odRefreshToken: "",
+    odFolder: "TechResumeAI",
   });
+
+  const [redesignId, setRedesignId] = useState("");
+  const [redesignTech, setRedesignTech] = useState("");
 
   async function refresh() {
     const [t, f, r, a] = await Promise.all([
@@ -92,6 +112,12 @@ export function AdminConsole() {
       user: a.settings.smtp.user || "",
       pass: "",
       secure: a.settings.smtp.secure,
+      odEnabled: a.settings.oneDrive?.enabled || false,
+      odClientId: a.settings.oneDrive?.clientId || "",
+      odClientSecret: "",
+      odTenantId: a.settings.oneDrive?.tenantId || "common",
+      odRefreshToken: "",
+      odFolder: a.settings.oneDrive?.folderPath || "TechResumeAI",
     });
     if (!formForm.technologyId && t[0]) {
       setFormForm((prev) => ({ ...prev, technologyId: t[0].id }));
@@ -183,15 +209,24 @@ export function AdminConsole() {
             pass: agentForm.pass || undefined,
             secure: agentForm.secure,
           },
+          oneDrive: {
+            enabled: agentForm.odEnabled,
+            clientId: agentForm.odClientId,
+            clientSecret: agentForm.odClientSecret || undefined,
+            tenantId: agentForm.odTenantId,
+            refreshToken: agentForm.odRefreshToken || undefined,
+            folderPath: agentForm.odFolder,
+          },
         }),
       });
       const data = await res.json();
       if (!res.ok) return setError(data.error || "Failed");
       await refresh();
       flash(
-        data.smtpConfigured
-          ? "Agent settings saved — email ready"
-          : "Agent settings saved — add SMTP to enable email",
+        [
+          data.smtpConfigured ? "Email ready" : "Email needs App Password",
+          data.oneDriveConfigured ? "OneDrive ready" : "OneDrive optional",
+        ].join(" · "),
       );
     });
   }
@@ -215,7 +250,30 @@ export function AdminConsole() {
       const data = await res.json();
       if (!res.ok) return setError(data.error || "Email failed");
       await refresh();
-      flash(data.email?.ok ? "Email sent" : data.email?.error || "Email attempted");
+      flash(data.email?.emailSent || data.email?.ok ? "Email sent" : data.email?.emailError || data.email?.error || "Email attempted");
+    });
+  }
+
+  function redesignById() {
+    if (!redesignId.trim()) return setError("Enter a Resume ID like TR-1001");
+    startTransition(async () => {
+      const res = await fetch(
+        `/api/resumes/${encodeURIComponent(redesignId.trim())}/redesign`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            technology: redesignTech || undefined,
+            sendEmail: true,
+          }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) return setError(data.error || "Redesign failed");
+      flash(
+        `Redesigned ${data.resumeNumber} v${data.designVersion} (${data.layout})`,
+      );
+      router.push(data.previewUrl);
     });
   }
 
@@ -601,6 +659,7 @@ export function AdminConsole() {
             </label>
           </div>
 
+
           <div className="check-row">
             <label className="check">
               <input
@@ -635,6 +694,76 @@ export function AdminConsole() {
               />
               SMTP secure (SSL)
             </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={agentForm.odEnabled}
+                onChange={(e) =>
+                  setAgentForm((p) => ({ ...p, odEnabled: e.target.checked }))
+                }
+              />
+              Save resumes to OneDrive
+            </label>
+          </div>
+
+          <h3>OneDrive (optional — your 1TB)</h3>
+          <div className="field-grid">
+            <label>
+              Client ID
+              <input
+                value={agentForm.odClientId}
+                onChange={(e) =>
+                  setAgentForm((p) => ({ ...p, odClientId: e.target.value }))
+                }
+              />
+            </label>
+            <label>
+              Tenant ID
+              <input
+                value={agentForm.odTenantId}
+                onChange={(e) =>
+                  setAgentForm((p) => ({ ...p, odTenantId: e.target.value }))
+                }
+                placeholder="common"
+              />
+            </label>
+            <label>
+              Client secret
+              <input
+                type="password"
+                value={agentForm.odClientSecret}
+                onChange={(e) =>
+                  setAgentForm((p) => ({
+                    ...p,
+                    odClientSecret: e.target.value,
+                  }))
+                }
+                placeholder="Leave blank to keep existing"
+              />
+            </label>
+            <label>
+              Refresh token
+              <input
+                type="password"
+                value={agentForm.odRefreshToken}
+                onChange={(e) =>
+                  setAgentForm((p) => ({
+                    ...p,
+                    odRefreshToken: e.target.value,
+                  }))
+                }
+                placeholder="Leave blank to keep existing"
+              />
+            </label>
+            <label className="span-2">
+              Folder path
+              <input
+                value={agentForm.odFolder}
+                onChange={(e) =>
+                  setAgentForm((p) => ({ ...p, odFolder: e.target.value }))
+                }
+              />
+            </label>
           </div>
 
           <div className="form-actions" style={{ marginTop: "1rem" }}>
@@ -653,13 +782,18 @@ export function AdminConsole() {
             <p>
               Email alerts:{" "}
               <strong>
-                {agent?.smtpConfigured ? "Configured" : "Not configured yet"}
+                {agent?.smtpConfigured ? "Configured" : "Needs Gmail App Password"}
+              </strong>
+            </p>
+            <p>
+              OneDrive:{" "}
+              <strong>
+                {agent?.oneDriveConfigured ? "Configured" : "Optional / not set"}
               </strong>
             </p>
             <p className="intake-hint">
-              Tip: For Gmail use an App Password. You can also set{" "}
-              <code>SMTP_*</code>, <code>NOTIFY_EMAIL</code>, and{" "}
-              <code>PUBLIC_BASE_URL</code> in <code>.env</code>.
+              Gmail App Password: myaccount.google.com/apppasswords — see{" "}
+              <strong>What I need</strong> tab.
             </p>
           </div>
         </section>
@@ -668,10 +802,43 @@ export function AdminConsole() {
       {tab === "Orders" && (
         <section className="admin-panel">
           <h2>Resume orders</h2>
-          <div style={{ marginBottom: "1rem" }}>
-            <Link href="/intake" className="primary-btn">
-              Manual intake
-            </Link>
+          <div className="docs-card" style={{ marginBottom: "1rem" }}>
+            <h3 style={{ marginTop: 0 }}>Redesign by Resume ID</h3>
+            <p className="intake-hint">
+              Customer disliked the look? Enter TR-1001, optionally a new
+              technology, then redesign + email.
+            </p>
+            <div className="field-grid">
+              <label>
+                Resume ID
+                <input
+                  value={redesignId}
+                  onChange={(e) => setRedesignId(e.target.value)}
+                  placeholder="TR-1001"
+                />
+              </label>
+              <label>
+                New technology (optional)
+                <input
+                  value={redesignTech}
+                  onChange={(e) => setRedesignTech(e.target.value)}
+                  placeholder="AWS / React / ServiceNow..."
+                />
+              </label>
+            </div>
+            <div className="form-actions" style={{ marginTop: "0.75rem" }}>
+              <button
+                type="button"
+                className="primary-btn"
+                disabled={pending}
+                onClick={redesignById}
+              >
+                Redesign & email me
+              </button>
+              <Link href="/intake" className="ghost-btn">
+                Manual intake
+              </Link>
+            </div>
           </div>
           {resumes.length === 0 ? (
             <div className="empty-state">No orders yet.</div>
@@ -679,9 +846,9 @@ export function AdminConsole() {
             <table className="admin-table">
               <thead>
                 <tr>
+                  <th>ID</th>
                   <th>Candidate</th>
                   <th>Technology</th>
-                  <th>Source</th>
                   <th>Status</th>
                   <th>Created</th>
                   <th />
@@ -691,11 +858,17 @@ export function AdminConsole() {
                 {resumes.map((r) => (
                   <tr key={r.id}>
                     <td>
+                      <strong>{r.resumeNumber || r.id}</strong>
+                      <div className="muted">v{r.designVersion || 1}</div>
+                    </td>
+                    <td>
                       <strong>{r.fullName}</strong>
                       <div className="muted">{r.contact?.email}</div>
                     </td>
-                    <td>{r.technologyName}</td>
-                    <td>{r.source}</td>
+                    <td>
+                      {r.technologyName}
+                      <div className="muted">{r.layout}</div>
+                    </td>
                     <td>
                       <span className={`status-pill ${r.status}`}>{r.status}</span>
                     </td>
@@ -706,9 +879,20 @@ export function AdminConsole() {
                         type="button"
                         className="ghost-btn"
                         disabled={pending}
-                        onClick={() => emailAgain(r.id)}
+                        onClick={() => emailAgain(r.resumeNumber || r.id)}
                       >
                         Email me
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost-btn"
+                        disabled={pending}
+                        onClick={() => {
+                          setRedesignId(r.resumeNumber || r.id);
+                          setRedesignTech(r.technologyName);
+                        }}
+                      >
+                        Use ID
                       </button>
                     </td>
                   </tr>
@@ -716,6 +900,78 @@ export function AdminConsole() {
               </tbody>
             </table>
           )}
+        </section>
+      )}
+
+      {tab === "What I need" && (
+        <section className="admin-panel">
+          <h2>What I need from you to go fully live</h2>
+          <p className="intake-hint">
+            I cannot log into Gmail or OneDrive from this environment. Provide
+            the items below and the share-form → email flow works end-to-end.
+          </p>
+          <article className="docs-card">
+            <h3 style={{ marginTop: 0 }}>1) Gmail App Password (required)</h3>
+            <ol>
+              <li>Enable 2-Step Verification on gokulnathgoku23@gmail.com</li>
+              <li>
+                Create App Password at{" "}
+                <a
+                  href="https://myaccount.google.com/apppasswords"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  myaccount.google.com/apppasswords
+                </a>
+              </li>
+              <li>Paste into Agent → SMTP password (user = your Gmail)</li>
+            </ol>
+          </article>
+          <article className="docs-card">
+            <h3 style={{ marginTop: 0 }}>2) Create Google Form (one-time script)</h3>
+            <ol>
+              <li>
+                Open{" "}
+                <a href="https://script.google.com" target="_blank" rel="noreferrer">
+                  script.google.com
+                </a>{" "}
+                signed into the same Gmail
+              </li>
+              <li>
+                New project → paste <code>integrations/create-google-form.gs</code>
+              </li>
+              <li>
+                Script Properties: <code>WEBHOOK_URL</code> (deployed app
+                /api/webhook/google-forms), <code>NOTIFY_EMAIL</code>
+              </li>
+              <li>
+                Run <code>createTechResumeForm</code> → approve → get public form
+                link (includes required Technology field)
+              </li>
+            </ol>
+          </article>
+          <article className="docs-card">
+            <h3 style={{ marginTop: 0 }}>3) Public https URL (required)</h3>
+            <p>
+              Deploy the app (Vercel etc.) and set PUBLIC_BASE_URL — Google cannot
+              call localhost.
+            </p>
+          </article>
+          <article className="docs-card">
+            <h3 style={{ marginTop: 0 }}>4) OneDrive (optional)</h3>
+            <p>
+              Azure app registration + refresh token. Until then, local{" "}
+              <code>data/</code> storage still works for IDs, email, and redesign.
+            </p>
+          </article>
+          <article className="docs-card">
+            <h3 style={{ marginTop: 0 }}>Redesign workflow</h3>
+            <p>
+              Emails include Resume ID like <code>TR-1042</code>. Tell me that ID
+              (or use Orders → Redesign) to generate a new design version and email
+              you again.
+            </p>
+          </article>
         </section>
       )}
     </div>

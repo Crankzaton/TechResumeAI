@@ -1,0 +1,210 @@
+/**
+ * ONE-TIME SETUP — run this while signed into gokulnathgoku23@gmail.com
+ *
+ * How to run:
+ * 1. Go to https://script.google.com → New project
+ * 2. Paste this entire file
+ * 3. Set Script Properties (Project Settings → Script properties):
+ *      WEBHOOK_URL  = https://YOUR_DEPLOYED_APP/api/webhook/google-forms
+ *      WEBHOOK_SECRET = (optional shared secret)
+ *      NOTIFY_EMAIL = gokulnathgoku23@gmail.com
+ * 4. Select function createTechResumeForm → Run
+ * 5. Approve Google permissions
+ * 6. Check Execution log / email for the public form link
+ * 7. Share ONLY that form link with customers
+ *
+ * The form includes a required "Technology" dropdown used to pick the resume theme.
+ * An On form submit trigger is installed automatically.
+ */
+
+var TECH_CHOICES = [
+  "ServiceNow",
+  "Salesforce",
+  "AWS",
+  "Microsoft Azure",
+  "React / Frontend",
+  "Java / Spring",
+  "Python / Data",
+  "Kubernetes / DevOps",
+  "SAP",
+  "DevOps / SRE",
+  "Other (write in Notes)",
+];
+
+function createTechResumeForm() {
+  var props = PropertiesService.getScriptProperties();
+  var webhookUrl = props.getProperty("WEBHOOK_URL");
+  if (!webhookUrl) {
+    throw new Error(
+      "Set Script Property WEBHOOK_URL to your deployed /api/webhook/google-forms URL first",
+    );
+  }
+
+  var form = FormApp.create("TechResumeAI — Client Resume Intake");
+  form.setDescription(
+    "Fill this form once. Your technology-themed resume will be prepared automatically.\n" +
+      "Important: choose the Technology that matches your stack.",
+  );
+  form.setConfirmationMessage(
+    "Thanks! Your details were submitted. The freelancer will share your resume shortly.",
+  );
+  form.setCollectEmail(true);
+  form.setProgressBar(true);
+
+  form
+    .addListItem()
+    .setTitle("Technology")
+    .setHelpText(
+      "Required — this chooses which themed resume design to generate.",
+    )
+    .setChoiceValues(TECH_CHOICES)
+    .setRequired(true);
+
+  form.addTextItem().setTitle("Full Name").setRequired(true);
+  form.addTextItem().setTitle("Headline").setHelpText("e.g. ServiceNow Developer | CIS-ITSM");
+  form.addTextItem().setTitle("Phone Numbers");
+  form.addTextItem().setTitle("LinkedIn").setHelpText("linkedin.com/in/...");
+  form.addTextItem().setTitle("Location");
+
+  form
+    .addParagraphTextItem()
+    .setTitle("Expertise")
+    .setHelpText("One skill per line")
+    .setRequired(true);
+
+  form
+    .addParagraphTextItem()
+    .setTitle("Certifications")
+    .setHelpText("One per line");
+
+  form
+    .addParagraphTextItem()
+    .setTitle("Languages")
+    .setHelpText("Format: English: Native Proficiency");
+
+  form
+    .addParagraphTextItem()
+    .setTitle("Work Experience")
+    .setHelpText(
+      "Use blocks:\nTitle | Company | Start - End\n- bullet\n- bullet\n\n(blank line between roles)",
+    )
+    .setRequired(true);
+
+  form
+    .addParagraphTextItem()
+    .setTitle("Education")
+    .setHelpText("Degree | Institution | Years\nStream");
+
+  form.addParagraphTextItem().setTitle("Additional Works");
+  form.addParagraphTextItem().setTitle("Notes");
+
+  // Linked sheet for responses
+  var ss = SpreadsheetApp.create("TechResumeAI — Form Responses");
+  form.setDestination(FormApp.DestinationType.SPREADSHEET, ss.getId());
+
+  // Install submit trigger on this form
+  ScriptApp.newTrigger("onFormSubmit")
+    .forForm(form)
+    .onFormSubmit()
+    .create();
+
+  // Persist form ids
+  props.setProperty("FORM_ID", form.getId());
+  props.setProperty("FORM_EDIT_URL", form.getEditUrl());
+  props.setProperty("FORM_PUBLISHED_URL", form.getPublishedUrl());
+  props.setProperty("SHEET_URL", ss.getUrl());
+
+  var published = form.getPublishedUrl();
+  var edit = form.getEditUrl();
+
+  Logger.log("=== TechResumeAI Form Created ===");
+  Logger.log("Share this link with customers: " + published);
+  Logger.log("Edit form: " + edit);
+  Logger.log("Responses sheet: " + ss.getUrl());
+
+  var notify = props.getProperty("NOTIFY_EMAIL");
+  if (notify) {
+    MailApp.sendEmail(
+      notify,
+      "TechResumeAI Google Form is ready",
+      "Share this form link with customers:\n\n" +
+        published +
+        "\n\nEdit form:\n" +
+        edit +
+        "\n\nResponses sheet:\n" +
+        ss.getUrl() +
+        "\n\nWebhook:\n" +
+        webhookUrl,
+    );
+  }
+
+  return {
+    publishedUrl: published,
+    editUrl: edit,
+    sheetUrl: ss.getUrl(),
+  };
+}
+
+function onFormSubmit(e) {
+  var props = PropertiesService.getScriptProperties();
+  var webhookUrl = props.getProperty("WEBHOOK_URL");
+  var secret = props.getProperty("WEBHOOK_SECRET");
+  if (!webhookUrl) {
+    throw new Error("WEBHOOK_URL missing in Script Properties");
+  }
+
+  var named = e.namedValues || {};
+  var payload = {};
+  Object.keys(named).forEach(function (key) {
+    var values = named[key];
+    payload[key] = Array.isArray(values) ? values.join("\n") : values;
+  });
+
+  // Canonical aliases
+  payload.Technology = first(named, ["Technology", "Technology Theme"]);
+  payload.technologyName = payload.Technology;
+  payload.theme = payload.Technology;
+  payload.fullName = first(named, ["Full Name", "Name"]);
+  payload.email = first(named, ["Email Address", "Email"]) || (e.response && e.response.getRespondentEmail && e.response.getRespondentEmail());
+  payload.phones = first(named, ["Phone Numbers", "Phone"]);
+  payload.linkedin = first(named, ["LinkedIn"]);
+  payload.headline = first(named, ["Headline"]);
+  payload.location = first(named, ["Location"]);
+  payload.expertise = first(named, ["Expertise", "Skills"]);
+  payload.certifications_mainline = first(named, ["Certifications"]);
+  payload.languages = first(named, ["Languages"]);
+  payload.workExperience = first(named, ["Work Experience", "Experience"]);
+  payload.education = first(named, ["Education"]);
+  payload.additionalWorks = first(named, ["Additional Works", "Projects"]);
+  payload.notes = first(named, ["Notes"]);
+
+  var headers = { "Content-Type": "application/json" };
+  if (secret) headers["x-webhook-secret"] = secret;
+
+  var response = UrlFetchApp.fetch(webhookUrl, {
+    method: "post",
+    contentType: "application/json",
+    headers: headers,
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true,
+  });
+
+  Logger.log("Agent status: " + response.getResponseCode());
+  Logger.log(response.getContentText());
+}
+
+function first(named, keys) {
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    if (named[key] && named[key][0]) return named[key][0];
+  }
+  return "";
+}
+
+/** Helper: print stored form URLs again */
+function showFormLinks() {
+  var props = PropertiesService.getScriptProperties();
+  Logger.log("Published: " + props.getProperty("FORM_PUBLISHED_URL"));
+  Logger.log("Edit: " + props.getProperty("FORM_EDIT_URL"));
+  Logger.log("Sheet: " + props.getProperty("SHEET_URL"));
+}

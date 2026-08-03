@@ -55,14 +55,18 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       id: result.resume.id,
+      resumeNumber: result.resume.resumeNumber,
+      designVersion: result.resume.designVersion,
       previewUrl: `/preview/${result.resume.id}`,
       technology: result.resume.technologyName,
+      layout: result.resume.layout,
+      oneDriveWebUrl: result.resume.oneDriveWebUrl,
       emailSent: result.emailSent,
       emailError: result.emailError,
       emailPreview: result.emailPreview,
       message: result.emailSent
-        ? "Resume built and email sent to freelancer"
-        : "Resume built. Configure SMTP in Agent settings to receive email alerts.",
+        ? `Resume ${result.resume.resumeNumber} built and emailed`
+        : `Resume ${result.resume.resumeNumber} built. Configure Gmail App Password in Agent settings to receive email.`,
     });
   } catch (error) {
     return NextResponse.json(

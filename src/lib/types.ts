@@ -89,6 +89,15 @@ export type FormConnectionInput = Omit<
   "id" | "createdAt" | "updatedAt"
 > & { id?: string };
 
+export interface OneDriveSettings {
+  enabled: boolean;
+  clientId: string;
+  clientSecret: string;
+  tenantId: string;
+  refreshToken: string;
+  folderPath: string;
+}
+
 export interface AgentSettings {
   freelancerName: string;
   notifyEmail: string;
@@ -103,6 +112,7 @@ export interface AgentSettings {
     pass: string;
     secure: boolean;
   };
+  oneDrive: OneDriveSettings;
   updatedAt: string;
 }
 
@@ -117,6 +127,8 @@ export type ResumeStatus =
 
 export interface ResumeData {
   id: string;
+  /** Human-friendly ID shown in emails, e.g. TR-1042 */
+  resumeNumber: string;
   createdAt: string;
   updatedAt: string;
   source: "form" | "google-forms" | "manual" | "agent" | "sample";
@@ -139,13 +151,19 @@ export interface ResumeData {
   agentLog?: string[];
   emailedAt?: string;
   emailError?: string;
+  designVersion: number;
+  previousLayouts?: LayoutStyle[];
+  oneDriveWebUrl?: string;
+  oneDriveItemId?: string;
 }
 
 export type ResumeInput = Omit<
   ResumeData,
-  "id" | "createdAt" | "updatedAt" | "status"
+  "id" | "createdAt" | "updatedAt" | "status" | "resumeNumber" | "designVersion"
 > & {
   status?: ResumeStatus;
+  resumeNumber?: string;
+  designVersion?: number;
 };
 
 export interface AgentEvent {
@@ -158,7 +176,9 @@ export interface AgentEvent {
     | "email_failed"
     | "manual_build"
     | "tech_created"
-    | "form_linked";
+    | "form_linked"
+    | "redesign"
+    | "onedrive_saved";
   message: string;
   resumeId?: string;
   technologyId?: string;

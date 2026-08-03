@@ -23,11 +23,28 @@ export async function PATCH(request: Request, { params }: Params) {
   if (body.action === "email") {
     try {
       const result = await reEmailResume(id);
-      const resume = await getResume(id);
-      return NextResponse.json({ resume, email: result });
+      return NextResponse.json({ resume: result.resume, email: result });
     } catch (error) {
       return NextResponse.json(
         { error: error instanceof Error ? error.message : "Email failed" },
+        { status: 400 },
+      );
+    }
+  }
+
+  if (body.action === "redesign") {
+    try {
+      const { redesignResume } = await import("@/lib/agent");
+      const result = await redesignResume({
+        idOrNumber: id,
+        technology: body.technologyName || (body as { technology?: string }).technology,
+        layout: body.layout,
+        sendEmail: true,
+      });
+      return NextResponse.json({ resume: result.resume, email: result });
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Redesign failed" },
         { status: 400 },
       );
     }

@@ -53,18 +53,29 @@ function seedTechnologies(): Technology[] {
 
 export function defaultAgentSettings(): AgentSettings {
   return {
-    freelancerName: "TechResumeAI Freelancer",
-    notifyEmail: process.env.NOTIFY_EMAIL || "",
-    fromEmail: process.env.FROM_EMAIL || process.env.SMTP_USER || "agent@techresume.ai",
+    freelancerName: "Gokul Nath",
+    notifyEmail: process.env.NOTIFY_EMAIL || "gokulnathgoku23@gmail.com",
+    fromEmail:
+      process.env.FROM_EMAIL ||
+      process.env.SMTP_USER ||
+      "gokulnathgoku23@gmail.com",
     autoGenerate: true,
     autoEmail: true,
     publicBaseUrl: process.env.PUBLIC_BASE_URL || "http://localhost:3000",
     smtp: {
-      host: process.env.SMTP_HOST || "",
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
       port: Number(process.env.SMTP_PORT || 587),
       user: process.env.SMTP_USER || "",
       pass: process.env.SMTP_PASS || "",
       secure: process.env.SMTP_SECURE === "true",
+    },
+    oneDrive: {
+      enabled: process.env.ONEDRIVE_ENABLED === "true",
+      clientId: process.env.ONEDRIVE_CLIENT_ID || "",
+      clientSecret: process.env.ONEDRIVE_CLIENT_SECRET || "",
+      tenantId: process.env.ONEDRIVE_TENANT_ID || "common",
+      refreshToken: process.env.ONEDRIVE_REFRESH_TOKEN || "",
+      folderPath: process.env.ONEDRIVE_FOLDER || "TechResumeAI",
     },
     updatedAt: now(),
   };
@@ -191,6 +202,15 @@ export async function deleteFormConnection(id: string): Promise<boolean> {
 
 /* -------- Resumes -------- */
 
+async function nextResumeNumber(): Promise<string> {
+  const counter = await readJson<{ last: number }>("resume-counter.json", {
+    last: 1000,
+  });
+  const next = counter.last + 1;
+  await writeJson("resume-counter.json", { last: next });
+  return `TR-${next}`;
+}
+
 export async function listResumes(): Promise<ResumeData[]> {
   const resumes = await readJson<ResumeData[]>("resumes.json", []);
   return resumes.sort(
@@ -198,16 +218,27 @@ export async function listResumes(): Promise<ResumeData[]> {
   );
 }
 
-export async function getResume(id: string): Promise<ResumeData | null> {
+export async function getResume(idOrNumber: string): Promise<ResumeData | null> {
   const resumes = await listResumes();
-  return resumes.find((r) => r.id === id) ?? null;
+  const key = idOrNumber.trim().toUpperCase();
+  return (
+    resumes.find(
+      (r) =>
+        r.id === idOrNumber ||
+        r.resumeNumber?.toUpperCase() === key ||
+        r.resumeNumber?.toUpperCase() === `TR-${key.replace(/^TR-/, "")}`,
+    ) ?? null
+  );
 }
 
 export async function createResume(input: ResumeInput): Promise<ResumeData> {
   const resumes = await readJson<ResumeData[]>("resumes.json", []);
+  const resumeNumber = input.resumeNumber || (await nextResumeNumber());
   const resume: ResumeData = {
     ...input,
     id: nanoid(10),
+    resumeNumber,
+    designVersion: input.designVersion ?? 1,
     createdAt: now(),
     updatedAt: now(),
     status: input.status ?? "new",
@@ -222,16 +253,23 @@ export async function updateResume(
   patch: Partial<ResumeData>,
 ): Promise<ResumeData | null> {
   const resumes = await readJson<ResumeData[]>("resumes.json", []);
-  const idx = resumes.findIndex((r) => r.id === id);
+  const idx = resumes.findIndex(
+    (r) => r.id === id || r.resumeNumber === id,
+  );
   if (idx < 0) return null;
-  resumes[idx] = { ...resumes[idx], ...patch, id, updatedAt: now() };
+  resumes[idx] = {
+    ...resumes[idx],
+    ...patch,
+    id: resumes[idx].id,
+    updatedAt: now(),
+  };
   await writeJson("resumes.json", resumes);
   return resumes[idx];
 }
 
 export async function deleteResume(id: string): Promise<boolean> {
   const resumes = await readJson<ResumeData[]>("resumes.json", []);
-  const next = resumes.filter((r) => r.id !== id);
+  const next = resumes.filter((r) => r.id !== id && r.resumeNumber !== id);
   if (next.length === resumes.length) return false;
   await writeJson("resumes.json", next);
   return true;
@@ -258,6 +296,15 @@ export async function getAgentSettings(): Promise<AgentSettings> {
       user: stored.smtp?.user || defaults.smtp.user,
       pass: stored.smtp?.pass || defaults.smtp.pass,
     },
+    oneDrive: {
+      ...defaults.oneDrive,
+      ...(stored.oneDrive || {}),
+      clientId: stored.oneDrive?.clientId || defaults.oneDrive.clientId,
+      clientSecret:
+        stored.oneDrive?.clientSecret || defaults.oneDrive.clientSecret,
+      refreshToken:
+        stored.oneDrive?.refreshToken || defaults.oneDrive.refreshToken,
+    },
     notifyEmail: stored.notifyEmail || defaults.notifyEmail,
     fromEmail: stored.fromEmail || defaults.fromEmail,
     publicBaseUrl: stored.publicBaseUrl || defaults.publicBaseUrl,
@@ -272,6 +319,7 @@ export async function saveAgentSettings(
     ...current,
     ...patch,
     smtp: { ...current.smtp, ...(patch.smtp || {}) },
+    oneDrive: { ...current.oneDrive, ...(patch.oneDrive || {}) },
     updatedAt: now(),
   };
   await writeJson("agent-settings.json", next);

@@ -4,30 +4,42 @@ import {
   findTechnologyByName,
   getAgentSettings,
   getFormConnection,
+  getResume,
   getTechnology,
   listTechnologies,
   updateResume,
 } from "./storage";
 import { sendResumeReadyEmail } from "./email";
+import { saveResumeToOneDrive } from "./onedrive";
 import { normalizeFormBody } from "./map-form";
-import type { ResumeData, ResumeInput, Technology } from "./types";
+import type {
+  LayoutStyle,
+  ResumeData,
+  ResumeInput,
+  Technology,
+} from "./types";
 import { SAMPLE_PROFILES } from "./sample-profiles";
+import { LAYOUT_OPTIONS } from "./default-technologies";
 
+/**
+ * Technology from the Google Form field wins.
+ * Form-connection default is only a fallback.
+ */
 export async function resolveTechnology(
   themeHint?: string,
   formConnectionId?: string,
 ): Promise<Technology> {
+  if (themeHint) {
+    const found = await findTechnologyByName(themeHint);
+    if (found) return found;
+  }
+
   if (formConnectionId) {
     const conn = await getFormConnection(formConnectionId);
     if (conn) {
       const tech = await getTechnology(conn.technologyId);
       if (tech) return tech;
     }
-  }
-
-  if (themeHint) {
-    const found = await findTechnologyByName(themeHint);
-    if (found) return found;
   }
 
   const all = await listTechnologies();
@@ -59,12 +71,97 @@ export function resumeFromMapped(
     education: mapped.education,
     additionalWorks: mapped.additionalWorks,
     notes: mapped.notes,
-    agentLog: [`Matched technology: ${tech.name}`],
+    agentLog: [`Matched technology: ${tech.name} (from Technology field / catalog)`],
     ...extras,
   };
 }
 
-/** Core agent pipeline: build resume + optional email */
+async function persistAndNotify(
+  resume: ResumeData,
+  settings: Awaited<ReturnType<typeof getAgentSettings>>,
+  opts?: { sendEmail?: boolean; redesigned?: boolean },
+) {
+  let current = resume;
+
+  const od = await saveResumeToOneDrive(settings, current);
+  if (od.ok) {
+    current =
+      (await updateResume(current.id, {
+        oneDriveWebUrl: od.webUrl,
+        oneDriveItemId: od.itemId,
+        agentLog: [
+          ...(current.agentLog || []),
+          `Saved to OneDrive: ${od.webUrl}`,
+        ],
+      })) || current;
+    await addAgentEvent({
+      type: "onedrive_saved",
+      message: `Saved ${current.resumeNumber} to OneDrive`,
+      resumeId: current.id,
+      meta: od.webUrl ? { webUrl: od.webUrl } : undefined,
+    });
+  } else if (settings.oneDrive?.enabled) {
+    current =
+      (await updateResume(current.id, {
+        agentLog: [
+          ...(current.agentLog || []),
+          `OneDrive skipped: ${od.error}`,
+        ],
+      })) || current;
+  }
+
+  const shouldEmail =
+    opts?.sendEmail ?? (settings.autoEmail && settings.autoGenerate);
+
+  let emailSent = false;
+  let emailError: string | undefined;
+  let emailPreview: string | undefined;
+
+  if (shouldEmail) {
+    const result = await sendResumeReadyEmail(settings, current, {
+      redesigned: opts?.redesigned,
+    });
+    emailSent = result.ok;
+    emailError = result.error;
+    emailPreview = result.preview;
+
+    if (result.ok) {
+      current =
+        (await updateResume(current.id, {
+          status: "emailed",
+          emailedAt: new Date().toISOString(),
+          emailError: undefined,
+          agentLog: [
+            ...(current.agentLog || []),
+            `Emailed ${settings.notifyEmail} with ID ${current.resumeNumber}`,
+          ],
+        })) || current;
+      await addAgentEvent({
+        type: "email_sent",
+        message: `Emailed ${current.resumeNumber} (${current.fullName}) to ${settings.notifyEmail}`,
+        resumeId: current.id,
+      });
+    } else {
+      current =
+        (await updateResume(current.id, {
+          emailError: result.error,
+          agentLog: [
+            ...(current.agentLog || []),
+            `Email not sent: ${result.error}`,
+          ],
+        })) || current;
+      await addAgentEvent({
+        type: "email_failed",
+        message: `${current.resumeNumber}: ${result.error || "Email failed"}`,
+        resumeId: current.id,
+      });
+    }
+  }
+
+  return { resume: current, emailSent, emailError, emailPreview };
+}
+
+/** Core agent pipeline: build resume + OneDrive + email */
 export async function runResumeAgent(options: {
   body: Record<string, unknown>;
   formConnectionId?: string;
@@ -85,6 +182,7 @@ export async function runResumeAgent(options: {
       options.body.technologyName ||
         options.body.theme ||
         options.body.technology ||
+        options.body["Technology"] ||
         options.body["Technology Theme"] ||
         options.body["Resume Theme"] ||
         options.body.Platform ||
@@ -106,12 +204,19 @@ export async function runResumeAgent(options: {
   if (!input.fullName) {
     throw new Error("Full name is required");
   }
+  if (!explicitTech && !options.formConnectionId) {
+    // still ok — falls back to default tech, but log it
+    input.agentLog = [
+      ...(input.agentLog || []),
+      "Warning: Technology field missing — used default technology",
+    ];
+  }
 
   let resume = await createResume(input);
 
   await addAgentEvent({
     type: "form_received",
-    message: `Received submission for ${resume.fullName}`,
+    message: `Received submission for ${resume.fullName} → ${resume.resumeNumber}`,
     resumeId: resume.id,
     technologyId: tech.id,
   });
@@ -121,61 +226,19 @@ export async function runResumeAgent(options: {
       status: "ready",
       agentLog: [
         ...(resume.agentLog || []),
-        "Resume layout generated",
+        `Resume ${resume.resumeNumber} generated`,
         `Theme: ${tech.name} / ${tech.layout}`,
       ],
     })) || resume;
 
   await addAgentEvent({
     type: "resume_built",
-    message: `Built ${tech.name} resume for ${resume.fullName}`,
+    message: `Built ${resume.resumeNumber}: ${tech.name} resume for ${resume.fullName}`,
     resumeId: resume.id,
     technologyId: tech.id,
   });
 
-  const shouldEmail =
-    options.sendEmail ?? (settings.autoEmail && settings.autoGenerate);
-
-  let emailSent = false;
-  let emailError: string | undefined;
-  let emailPreview: string | undefined;
-
-  if (shouldEmail) {
-    const result = await sendResumeReadyEmail(settings, resume);
-    emailSent = result.ok;
-    emailError = result.error;
-    emailPreview = result.preview;
-
-    if (result.ok) {
-      resume =
-        (await updateResume(resume.id, {
-          status: "emailed",
-          emailedAt: new Date().toISOString(),
-          agentLog: [...(resume.agentLog || []), `Emailed ${settings.notifyEmail}`],
-        })) || resume;
-      await addAgentEvent({
-        type: "email_sent",
-        message: `Emailed resume link for ${resume.fullName} to ${settings.notifyEmail}`,
-        resumeId: resume.id,
-      });
-    } else {
-      resume =
-        (await updateResume(resume.id, {
-          emailError: result.error,
-          agentLog: [
-            ...(resume.agentLog || []),
-            `Email not sent: ${result.error}`,
-          ],
-        })) || resume;
-      await addAgentEvent({
-        type: "email_failed",
-        message: result.error || "Email failed",
-        resumeId: resume.id,
-      });
-    }
-  }
-
-  return { resume, emailSent, emailError, emailPreview };
+  return persistAndNotify(resume, settings, { sendEmail: options.sendEmail });
 }
 
 export async function buildSampleForTechnology(
@@ -194,6 +257,7 @@ export async function buildSampleForTechnology(
       ...profile,
       theme: tech.name,
       technologyName: tech.name,
+      Technology: tech.name,
       source: "sample",
     },
     source: "sample",
@@ -205,22 +269,77 @@ export async function buildSampleForTechnology(
 
 export async function reEmailResume(resumeId: string) {
   const settings = await getAgentSettings();
-  const { getResume } = await import("./storage");
   const resume = await getResume(resumeId);
   if (!resume) throw new Error("Resume not found");
+  return persistAndNotify(resume, settings, { sendEmail: true });
+}
 
-  const result = await sendResumeReadyEmail(settings, resume);
-  if (result.ok) {
-    await updateResume(resumeId, {
-      status: "emailed",
-      emailedAt: new Date().toISOString(),
-      emailError: undefined,
-    });
-    await addAgentEvent({
-      type: "email_sent",
-      message: `Re-sent email for ${resume.fullName}`,
-      resumeId,
-    });
+function nextLayout(current: LayoutStyle, used: LayoutStyle[] = []): LayoutStyle {
+  const order = LAYOUT_OPTIONS.map((o) => o.id);
+  const pool = order.filter((l) => l !== current && !used.includes(l));
+  if (pool.length) return pool[0];
+  const idx = order.indexOf(current);
+  return order[(idx + 1) % order.length];
+}
+
+/**
+ * Redesign an existing resume by Resume ID (TR-1001) or internal id.
+ * Optionally switch technology and/or layout, then email again.
+ */
+export async function redesignResume(options: {
+  idOrNumber: string;
+  technology?: string;
+  layout?: LayoutStyle;
+  sendEmail?: boolean;
+}): Promise<{
+  resume: ResumeData;
+  emailSent: boolean;
+  emailError?: string;
+  emailPreview?: string;
+}> {
+  const existing = await getResume(options.idOrNumber);
+  if (!existing) throw new Error(`Resume not found: ${options.idOrNumber}`);
+
+  const settings = await getAgentSettings();
+  let tech = await getTechnology(existing.technologyId);
+  if (options.technology) {
+    tech =
+      (await findTechnologyByName(options.technology)) ||
+      (await getTechnology(options.technology));
   }
-  return result;
+  if (!tech) throw new Error("Technology not found for redesign");
+
+  const used = existing.previousLayouts || [];
+  const layout =
+    options.layout ||
+    (options.technology ? tech.layout : nextLayout(existing.layout, used));
+
+  const previousLayouts = [...used, existing.layout].slice(-8);
+
+  let resume =
+    (await updateResume(existing.id, {
+      technologyId: tech.id,
+      technologyName: tech.name,
+      layout,
+      themeColors: tech.colors,
+      designVersion: (existing.designVersion || 1) + 1,
+      previousLayouts,
+      status: "ready",
+      agentLog: [
+        ...(existing.agentLog || []),
+        `Redesign v${(existing.designVersion || 1) + 1}: ${tech.name} / ${layout}`,
+      ],
+    })) || existing;
+
+  await addAgentEvent({
+    type: "redesign",
+    message: `Redesigned ${resume.resumeNumber} → ${tech.name} / ${layout} (v${resume.designVersion})`,
+    resumeId: resume.id,
+    technologyId: tech.id,
+  });
+
+  return persistAndNotify(resume, settings, {
+    sendEmail: options.sendEmail ?? true,
+    redesigned: true,
+  });
 }

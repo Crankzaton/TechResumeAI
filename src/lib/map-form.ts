@@ -183,6 +183,7 @@ export function mapGoogleFormPayload(body: Record<string, unknown>): {
         "theme",
         "technology",
         "technologyName",
+        "Technology",
         "Technology Theme",
         "Resume Theme",
         "Platform",

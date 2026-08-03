@@ -768,11 +768,13 @@ textarea {
   width: auto;
 }
 
-.row-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  align-items: center;
+.redesign-box {
+  margin-top: 0.75rem;
+  padding: 0.85rem;
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.55);
+  max-width: 420px;
 }
 
 @media (max-width: 900px) {

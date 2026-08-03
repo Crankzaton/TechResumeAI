@@ -1,10 +1,19 @@
 # TechResumeAI
 
-Freelancer **resume agent**: clients fill Google Forms → agent builds a
-technology-themed resume → emails you a one-click preview link to share.
+Freelancer **resume agent**: share one Google Form link → client submits with a
+**Technology** choice → agent builds a themed resume with ID `TR-####` → emails
+you a one-click link. Redesign anytime by Resume ID.
 
-Works for **any technology** you configure (ServiceNow, Salesforce, AWS, Azure,
-React, Java, Python, Kubernetes, SAP, DevOps, or custom).
+## What you need to go live
+
+| Item | Why |
+| --- | --- |
+| **Gmail App Password** | So the agent can email you |  
+| **Deployed https URL** | Google Forms cannot call localhost |
+| **Run `create-google-form.gs` once** | Creates the Form (with Technology field) in your Gmail |
+| **OneDrive creds (optional)** | Store resume JSON in your 1TB drive |
+
+Full checklist: Admin → **What I need** tab.
 
 ## Quick start
 
@@ -13,56 +22,28 @@ npm install
 npm run dev
 ```
 
-1. Open **Admin / Agent** → configure notify email + SMTP
-2. **Technologies** → add stacks or use samples (one-click preview)
-3. **Google Forms** → link a form to a technology, copy webhook URL
-4. Paste `integrations/google-apps-script.gs` into the form’s sheet
+1. Admin → Agent → paste Gmail App Password  
+2. Deploy app → set `PUBLIC_BASE_URL`  
+3. script.google.com → paste `integrations/create-google-form.gs` → run `createTechResumeForm`  
+4. Share only the published form link with customers  
 
-## Agent automation
+## Redesign by ID
 
-When a form is submitted:
-
-1. Webhook receives answers  
-2. Resume is generated in the linked technology theme  
-3. You get an email: **Open resume (one click)**  
-4. Print PDF and send to your customer  
-
-Configure in Admin → **Agent** (or env):
+Emails include **Resume ID** (`TR-1042`). In Admin → Orders (or tell the agent):
 
 ```bash
-NOTIFY_EMAIL=you@email.com
-FROM_EMAIL=agent@yourdomain.com
-PUBLIC_BASE_URL=https://your-app.com
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=you@email.com
-SMTP_PASS=app-password
-WEBHOOK_SECRET=optional-global-secret
+curl -X POST https://YOUR_APP/api/resumes/TR-1042/redesign \
+  -H 'Content-Type: application/json' \
+  -d '{"technology":"AWS","sendEmail":true}'
 ```
 
-## Admin console
+Same ID, new design version, email again.
 
-| Tab | Purpose |
-| --- | --- |
-| Overview | Stats, one-click samples, agent activity |
-| Technologies | Add any tech + colors + layout |
-| Google Forms | Bind forms → technologies, webhook URLs |
-| Agent | Email / SMTP / auto-generate toggles |
-| Orders | All resumes, open / re-email |
+## Technology field
 
-## Layout styles
+The Google Form has a required **Technology** dropdown. That value selects the
+resume theme (ServiceNow, AWS, React, SAP, … or any tech you add in Admin).
 
-`platform-dark` · `cloud-blue` · `console-dark` · `portal-light` · `modern-clean` · `terminal`
+## Env
 
-## API
-
-| Endpoint | Role |
-| --- | --- |
-| `POST /api/webhook/google-forms?formId=` | Form → agent pipeline |
-| `GET/POST /api/technologies` | Tech catalog |
-| `GET/POST /api/forms` | Form connections |
-| `GET/PATCH /api/agent` | Agent settings + events |
-| `GET /api/resumes?sample=techId` | One-click sample |
-| `POST /api/resumes` | Manual / intake create |
-
-Data is stored under `data/*.json` (swap for a DB when you scale).
+See `.env.example` for SMTP + OneDrive variables.
