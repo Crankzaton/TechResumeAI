@@ -13,7 +13,11 @@ import type {
 } from "./types";
 import { DEFAULT_TECHNOLOGIES } from "./default-technologies";
 
-const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_DIR =
+  process.env.DATA_DIR ||
+  (process.env.VERCEL || process.env.RAILWAY_ENVIRONMENT
+    ? path.join("/tmp", "techresume-data")
+    : path.join(process.cwd(), "data"));
 
 async function readJson<T>(file: string, fallback: T): Promise<T> {
   await fs.mkdir(DATA_DIR, { recursive: true });
