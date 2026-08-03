@@ -3,17 +3,21 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ResumeRenderer } from "@/components/resumes/ResumeRenderer";
+import { SectionEditorPanel } from "@/components/preview/SectionEditorPanel";
 import { LAYOUT_OPTIONS } from "@/lib/default-technologies";
 import {
   colorVariant,
   DESIGN_TEMPLATES,
+  layoutAccentPalette,
   nextDesignTemplate,
   nextLayout,
 } from "@/lib/design-variants";
+import { ensureSectionLayout } from "@/lib/resume-sections";
 import type {
   DesignTemplateId,
   LayoutStyle,
   ResumeData,
+  ResumeSectionConfig,
   Technology,
 } from "@/lib/types";
 
@@ -37,6 +41,8 @@ export function PreviewWorkspace({
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState(true);
+  const [selectedSection, setSelectedSection] = useState<string | null>(null);
 
   const initialTech =
     technologies.find(
@@ -55,7 +61,10 @@ export function PreviewWorkspace({
     initial.designTemplate || "classic",
   );
   const [variantIndex, setVariantIndex] = useState(0);
-  const [resume, setResume] = useState(initial);
+  const [resume, setResume] = useState(() => ({
+    ...initial,
+    sectionLayout: ensureSectionLayout(initial),
+  }));
 
   const selectedTech = useMemo(() => {
     if (techKey === OTHER) return null;
@@ -67,7 +76,9 @@ export function PreviewWorkspace({
       selectedTech?.colors ||
       resume.themeColors ||
       technologies[0]?.colors;
-    const colors = colorVariant(baseColors, variantIndex);
+    // Layout accent remaps palette so dropdown always visibly changes design
+    const laid = layoutAccentPalette(layout, baseColors);
+    const colors = colorVariant(laid, variantIndex);
     return {
       ...resume,
       technologyId: selectedTech?.id || resume.technologyId,
@@ -78,6 +89,7 @@ export function PreviewWorkspace({
       layout,
       designTemplate,
       themeColors: colors,
+      sectionLayout: ensureSectionLayout(resume),
     };
   }, [
     resume,
@@ -99,6 +111,20 @@ export function PreviewWorkspace({
       layout: liveResume.layout,
       designTemplate: liveResume.designTemplate,
       themeColors: liveResume.themeColors,
+      sectionLayout: liveResume.sectionLayout,
+      fullName: liveResume.fullName,
+      headline: liveResume.headline,
+      summary: liveResume.summary,
+      expertise: liveResume.expertise,
+      tools: liveResume.tools,
+      workExperience: liveResume.workExperience,
+      projects: liveResume.projects,
+      education: liveResume.education,
+      certifications: liveResume.certifications,
+      languages: liveResume.languages,
+      awards: liveResume.awards,
+      interests: liveResume.interests,
+      additionalWorks: liveResume.additionalWorks,
       designVersion: resume.designVersion || 1,
       ...extra,
     };
@@ -109,7 +135,7 @@ export function PreviewWorkspace({
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Save failed");
-    setResume(data);
+    setResume({ ...data, sectionLayout: ensureSectionLayout(data) });
     return data as ResumeData;
   }
 
@@ -123,7 +149,6 @@ export function PreviewWorkspace({
   }
 
   function redesign() {
-    // Cycle to a clearly different modular template + layout + color accent
     const used = resume.previousLayouts || [];
     const nextTpl = nextDesignTemplate(designTemplate);
     const nextLay = nextLayout(layout, used);
@@ -131,7 +156,15 @@ export function PreviewWorkspace({
     setLayout(nextLay);
     setVariantIndex((v) => v + 1);
     const meta = templateMeta(nextTpl);
-    setMsg(`Redesign → ${meta.name}: ${meta.pitch}`);
+    setMsg(`Redesign → ${meta.name} + ${nextLay}`);
+  }
+
+  function patchResume(patch: Partial<ResumeData>) {
+    setResume((r) => ({ ...r, ...patch }));
+  }
+
+  function setSections(next: ResumeSectionConfig[]) {
+    setResume((r) => ({ ...r, sectionLayout: next }));
   }
 
   function downloadPdf() {
@@ -154,7 +187,7 @@ export function PreviewWorkspace({
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        setMsg("Downloaded resume PDF");
+        setMsg("Downloaded resume PDF (matches current preview)");
       } catch (e) {
         setError(e instanceof Error ? e.message : "Download failed");
       }
@@ -179,7 +212,7 @@ export function PreviewWorkspace({
             ? `Emailed ${saved.resumeNumber} with PDF attachment`
             : email.emailError || email.error || "Email attempted",
         );
-        if (data.resume) setResume(data.resume);
+        if (data.resume) setResume({ ...data.resume, sectionLayout: ensureSectionLayout(data.resume) });
         router.refresh();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Email failed");
@@ -201,7 +234,7 @@ export function PreviewWorkspace({
           status: "ready",
         });
         setMsg(
-          `Saved redesign ${saved.resumeNumber} v${saved.designVersion} · ${templateMeta(saved.designTemplate).name}`,
+          `Saved ${saved.resumeNumber} v${saved.designVersion} · ${templateMeta(saved.designTemplate).name}`,
         );
         router.refresh();
       } catch (e) {
@@ -228,12 +261,10 @@ export function PreviewWorkspace({
           <p className="eyebrow">
             {liveResume.resumeNumber} · v{liveResume.designVersion || 1} ·{" "}
             {liveResume.technologyName} · {tpl.name} · {liveResume.layout}
-            {variantIndex > 0 ? ` · color ${variantIndex + 1}` : ""}
           </p>
           <h1>{liveResume.fullName}</h1>
           <p className="meta">
-            Status: <strong>{resume.status}</strong> · Source: {resume.source} ·{" "}
-            {tpl.pitch}
+            Status: <strong>{resume.status}</strong> · {tpl.pitch}
           </p>
           {msg && <p className="form-success">{msg}</p>}
           {error && <p className="form-error">{error}</p>}
@@ -262,6 +293,13 @@ export function PreviewWorkspace({
             </button>
             <button
               type="button"
+              className={editMode ? "primary-btn" : "ghost-btn"}
+              onClick={() => setEditMode((v) => !v)}
+            >
+              {editMode ? "Editing on" : "Edit sections"}
+            </button>
+            <button
+              type="button"
               className="primary-btn"
               disabled={pending}
               onClick={markDelivered}
@@ -272,9 +310,9 @@ export function PreviewWorkspace({
 
           <div className="redesign-box">
             <p className="intake-hint" style={{ marginBottom: "0.4rem" }}>
-              Redesign cycles proprietary compositions (Orbital Mast, Lattice
-              Grid, Spectrum Ribbon, Folio Split, Synapse Rail) — each with
-              unique Design DNA geometry recruiters cannot recreate in Canva.
+              Layout accent remaps the full color system. Redesign cycles
+              proprietary templates. Edit sections on the left / click resume
+              blocks.
             </p>
             <div className="field-grid" style={{ marginBottom: "0.5rem" }}>
               <label>
@@ -352,9 +390,32 @@ export function PreviewWorkspace({
         </div>
       </div>
 
-      <div className="preview-stage">
-        <div className="resume-sheet" id="resume-print-root">
-          <ResumeRenderer data={liveResume} />
+      <div className={`preview-edit-grid${editMode ? " editing" : ""}`}>
+        {editMode && (
+          <SectionEditorPanel
+            sections={liveResume.sectionLayout || []}
+            selectedId={selectedSection}
+            onSelect={setSelectedSection}
+            onChange={setSections}
+            resume={liveResume}
+            onResumePatch={patchResume}
+          />
+        )}
+        <div className="preview-stage">
+          <div className="resume-sheet" id="resume-print-root">
+            <ResumeRenderer
+              data={liveResume}
+              handlers={
+                editMode
+                  ? {
+                      editMode: true,
+                      selectedId: selectedSection,
+                      onSelect: setSelectedSection,
+                    }
+                  : undefined
+              }
+            />
+          </div>
         </div>
       </div>
     </>

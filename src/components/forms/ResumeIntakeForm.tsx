@@ -4,11 +4,59 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Technology } from "@/lib/types";
 
+const DRAFT_KEY = "techresume-intake-draft-v1";
+
 type AttachmentRow = {
   id: string;
   technology: string;
   file: File | null;
 };
+
+type Draft = {
+  fullName: string;
+  technology: string;
+  mobile: string;
+  email: string;
+  headline: string;
+  linkedin: string;
+  location: string;
+  website: string;
+  summary: string;
+  skills: string;
+  tools: string;
+  experience: string;
+  projects: string;
+  education: string;
+  certifications: string;
+  languages: string;
+  awards: string;
+  interests: string;
+  additional: string;
+  sendEmail: boolean;
+};
+
+const emptyDraft = (): Draft => ({
+  fullName: "",
+  technology: "ServiceNow",
+  mobile: "",
+  email: "",
+  headline: "",
+  linkedin: "",
+  location: "",
+  website: "",
+  summary: "",
+  skills: "",
+  tools: "",
+  experience: "",
+  projects: "",
+  education: "",
+  certifications: "",
+  languages: "",
+  awards: "",
+  interests: "",
+  additional: "",
+  sendEmail: true,
+});
 
 function newRow(tech = "ServiceNow"): AttachmentRow {
   return { id: Math.random().toString(36).slice(2), technology: tech, file: null };
@@ -19,9 +67,28 @@ export function ResumeIntakeForm() {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [techs, setTechs] = useState<Technology[]>([]);
-  const [technology, setTechnology] = useState("ServiceNow");
+  const [draft, setDraft] = useState<Draft>(emptyDraft);
+  const [draftReady, setDraftReady] = useState(false);
   const [attachments, setAttachments] = useState<AttachmentRow[]>([newRow()]);
   const [batchMsg, setBatchMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Draft;
+        setDraft({ ...emptyDraft(), ...parsed });
+      }
+    } catch {
+      /* ignore */
+    }
+    setDraftReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  }, [draft, draftReady]);
 
   useEffect(() => {
     fetch("/api/technologies")
@@ -29,33 +96,46 @@ export function ResumeIntakeForm() {
       .then((list: Technology[]) => {
         const active = (list || []).filter((t) => t.active);
         setTechs(active);
-        if (active[0]) {
-          setTechnology(active[0].name);
+        if (active[0] && !localStorage.getItem(DRAFT_KEY)) {
+          setDraft((d) => ({ ...d, technology: active[0].name }));
           setAttachments([newRow(active[0].name)]);
         }
       })
       .catch(() => setError("Could not load technologies"));
   }, []);
 
+  function setField<K extends keyof Draft>(key: K, value: Draft[K]) {
+    setDraft((d) => ({ ...d, [key]: value }));
+  }
+
   function onGenerateForm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    const form = new FormData(e.currentTarget);
 
     const payload = {
       source: "form",
-      technologyName: technology,
-      theme: technology,
-      Technology: technology,
-      fullName: String(form.get("fullName") || ""),
-      email: String(form.get("email") || ""),
-      phones: String(form.get("mobile") || ""),
-      expertise: String(form.get("skills") || ""),
-      workExperience: String(form.get("experience") || ""),
-      education: String(form.get("education") || ""),
-      linkedin: String(form.get("linkedin") || ""),
-      headline: String(form.get("headline") || ""),
-      sendEmail: form.get("sendEmail") === "on",
+      technologyName: draft.technology,
+      theme: draft.technology,
+      Technology: draft.technology,
+      fullName: draft.fullName,
+      email: draft.email,
+      phones: draft.mobile,
+      location: draft.location,
+      website: draft.website,
+      linkedin: draft.linkedin,
+      headline: draft.headline,
+      summary: draft.summary,
+      expertise: draft.skills,
+      tools: draft.tools,
+      workExperience: draft.experience,
+      projects: draft.projects,
+      education: draft.education,
+      certifications: draft.certifications,
+      languages: draft.languages,
+      awards: draft.awards,
+      interests: draft.interests,
+      additionalWorks: draft.additional,
+      sendEmail: draft.sendEmail,
     };
 
     startTransition(async () => {
@@ -70,11 +150,17 @@ export function ResumeIntakeForm() {
           setError(data.error || "Failed to generate");
           return;
         }
+        // Keep draft so going back restores fields
         router.push(`/preview/${data.id}`);
       } catch {
         setError("Network error");
       }
     });
+  }
+
+  function clearDraft() {
+    setDraft(emptyDraft());
+    localStorage.removeItem(DRAFT_KEY);
   }
 
   function onGenerateAttachments(e: React.FormEvent) {
@@ -125,21 +211,34 @@ export function ResumeIntakeForm() {
     <div className="intake-stack">
       <form className="intake-form" onSubmit={onGenerateForm}>
         <section className="intake-section">
-          <h2>Create resume</h2>
+          <div className="intake-section-head">
+            <h2>Create resume</h2>
+            <button type="button" className="ghost-btn" onClick={clearDraft}>
+              Clear saved draft
+            </button>
+          </div>
           <p className="intake-hint">
-            Enter the basics. Technology chooses the theme — any stack, not just
-            ServiceNow.
+            Fields auto-save in this browser. Going back after Generate restores
+            everything. Each block below becomes a resume section you can edit
+            later in preview.
           </p>
+
+          <h3 className="intake-sub">Contact</h3>
           <div className="field-grid">
             <label>
               Name *
-              <input name="fullName" required placeholder="Full name" />
+              <input
+                required
+                value={draft.fullName}
+                onChange={(e) => setField("fullName", e.target.value)}
+                placeholder="Full name"
+              />
             </label>
             <label>
               Technology *
               <select
-                value={technology}
-                onChange={(e) => setTechnology(e.target.value)}
+                value={draft.technology}
+                onChange={(e) => setField("technology", e.target.value)}
                 required
               >
                 {techs.map((t) => (
@@ -151,55 +250,180 @@ export function ResumeIntakeForm() {
             </label>
             <label>
               Mobile *
-              <input name="mobile" required placeholder="+91-..." />
+              <input
+                required
+                value={draft.mobile}
+                onChange={(e) => setField("mobile", e.target.value)}
+                placeholder="+91-..."
+              />
             </label>
             <label>
               Email *
-              <input name="email" type="email" required placeholder="name@email.com" />
+              <input
+                type="email"
+                required
+                value={draft.email}
+                onChange={(e) => setField("email", e.target.value)}
+                placeholder="name@email.com"
+              />
             </label>
             <label>
               Headline
-              <input name="headline" placeholder="Role | specialty" />
+              <input
+                value={draft.headline}
+                onChange={(e) => setField("headline", e.target.value)}
+                placeholder="Role | specialty"
+              />
             </label>
             <label>
               LinkedIn
-              <input name="linkedin" placeholder="linkedin.com/in/..." />
+              <input
+                value={draft.linkedin}
+                onChange={(e) => setField("linkedin", e.target.value)}
+                placeholder="linkedin.com/in/..."
+              />
+            </label>
+            <label>
+              Location
+              <input
+                value={draft.location}
+                onChange={(e) => setField("location", e.target.value)}
+                placeholder="City, Country"
+              />
+            </label>
+            <label>
+              Website / portfolio
+              <input
+                value={draft.website}
+                onChange={(e) => setField("website", e.target.value)}
+                placeholder="https://..."
+              />
             </label>
           </div>
 
-          <label style={{ marginTop: "0.85rem" }}>
-            Skills *
+          <h3 className="intake-sub">Professional summary</h3>
+          <label>
+            Summary
             <textarea
-              name="skills"
-              required
-              rows={4}
-              placeholder={"One skill per line\nFlow Designer\nITSM"}
+              rows={3}
+              value={draft.summary}
+              onChange={(e) => setField("summary", e.target.value)}
+              placeholder="2–4 lines for recruiters — impact, stack, domain."
             />
           </label>
 
-          <label style={{ marginTop: "0.85rem" }}>
-            Experience *
+          <h3 className="intake-sub">Skills & tools</h3>
+          <label>
+            Skills *
             <textarea
-              name="experience"
+              required
+              rows={4}
+              value={draft.skills}
+              onChange={(e) => setField("skills", e.target.value)}
+              placeholder={"One skill per line\nFlow Designer\nITSM"}
+            />
+          </label>
+          <label style={{ marginTop: "0.75rem" }}>
+            Tools & platforms
+            <textarea
+              rows={3}
+              value={draft.tools}
+              onChange={(e) => setField("tools", e.target.value)}
+              placeholder={"One per line\nJira\nGit\nJenkins"}
+            />
+          </label>
+
+          <h3 className="intake-sub">Experience</h3>
+          <label>
+            Work experience *
+            <textarea
               required
               rows={7}
+              value={draft.experience}
+              onChange={(e) => setField("experience", e.target.value)}
               placeholder={
                 "Title | Company | Jan 2022 - Current\n- Achievement bullet\n- Achievement bullet\n\nPrevious Title | Company | 2019 - 2021\n- Bullet"
               }
             />
           </label>
 
-          <label style={{ marginTop: "0.85rem" }}>
+          <h3 className="intake-sub">Projects</h3>
+          <label>
+            Projects
+            <textarea
+              rows={5}
+              value={draft.projects}
+              onChange={(e) => setField("projects", e.target.value)}
+              placeholder={
+                "Project name | optional-link\nShort description of what you built\n\nAnother project\nDescription"
+              }
+            />
+          </label>
+
+          <h3 className="intake-sub">Education & credentials</h3>
+          <label>
             Education
             <textarea
-              name="education"
               rows={3}
+              value={draft.education}
+              onChange={(e) => setField("education", e.target.value)}
               placeholder={"Degree | College | 2015 - 2019"}
+            />
+          </label>
+          <label style={{ marginTop: "0.75rem" }}>
+            Certifications
+            <textarea
+              rows={3}
+              value={draft.certifications}
+              onChange={(e) => setField("certifications", e.target.value)}
+              placeholder={"One per line\nCIS-ITSM\nAWS SAA"}
+            />
+          </label>
+          <label style={{ marginTop: "0.75rem" }}>
+            Languages
+            <textarea
+              rows={2}
+              value={draft.languages}
+              onChange={(e) => setField("languages", e.target.value)}
+              placeholder={"English: Native\nTamil: Native"}
+            />
+          </label>
+
+          <h3 className="intake-sub">Extra sections</h3>
+          <label>
+            Awards
+            <textarea
+              rows={2}
+              value={draft.awards}
+              onChange={(e) => setField("awards", e.target.value)}
+              placeholder="One award per line"
+            />
+          </label>
+          <label style={{ marginTop: "0.75rem" }}>
+            Interests
+            <textarea
+              rows={2}
+              value={draft.interests}
+              onChange={(e) => setField("interests", e.target.value)}
+              placeholder="One interest per line"
+            />
+          </label>
+          <label style={{ marginTop: "0.75rem" }}>
+            Additional
+            <textarea
+              rows={2}
+              value={draft.additional}
+              onChange={(e) => setField("additional", e.target.value)}
+              placeholder="Open source, speaking, volunteering…"
             />
           </label>
 
           <label className="check" style={{ marginTop: "0.85rem" }}>
-            <input type="checkbox" name="sendEmail" defaultChecked />
+            <input
+              type="checkbox"
+              checked={draft.sendEmail}
+              onChange={(e) => setField("sendEmail", e.target.checked)}
+            />
             Email me the one-click link when ready
           </label>
 
@@ -218,7 +442,7 @@ export function ResumeIntakeForm() {
           <h2>Create from attachment</h2>
           <p className="intake-hint">
             Upload one or more resumes (PDF / DOCX / TXT). Each file can use a
-            different technology theme. Same fields as the Google Form.
+            different technology theme.
           </p>
 
           {attachments.map((row, index) => (
@@ -261,9 +485,7 @@ export function ResumeIntakeForm() {
                   />
                 </label>
               </div>
-              {row.file && (
-                <p className="muted">Selected: {row.file.name}</p>
-              )}
+              {row.file && <p className="muted">Selected: {row.file.name}</p>}
               {attachments.length > 1 && (
                 <button
                   type="button"
@@ -284,7 +506,7 @@ export function ResumeIntakeForm() {
               type="button"
               className="ghost-btn"
               onClick={() =>
-                setAttachments((rows) => [...rows, newRow(technology)])
+                setAttachments((rows) => [...rows, newRow(draft.technology)])
               }
             >
               + Add another file / technology

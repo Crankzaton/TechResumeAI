@@ -6,8 +6,9 @@ export default function IntakePage() {
       <header className="page-header">
         <h1>New resume</h1>
         <p>
-          Enter name, technology, contact, skills and experience — or upload
-          resume files below (each file can use a different technology).
+          Fill every section you want on the resume — summary, skills, tools,
+          experience, projects, education, certs, awards, and more. Your draft
+          auto-saves if you leave and come back.
         </p>
       </header>
       <ResumeIntakeForm />

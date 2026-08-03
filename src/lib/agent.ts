@@ -23,6 +23,7 @@ import { SAMPLE_PROFILES } from "./sample-profiles";
 import { LAYOUT_OPTIONS } from "./default-technologies";
 import { DESIGN_TEMPLATES, nextDesignTemplate } from "./design-variants";
 import { polishBullets, polishHeadline } from "./content-polish";
+import { buildDefaultSectionLayout } from "./resume-sections";
 
 function pickStarterTemplate(seed: string): DesignTemplateId {
   // Prefer creative modular templates for first impression
@@ -73,7 +74,7 @@ export function resumeFromMapped(
     bullets: polishBullets(job.bullets, tech.name),
   }));
 
-  return {
+  const base = {
     source: mapped.source || "form",
     technologyId: tech.id,
     technologyName: tech.name,
@@ -82,12 +83,17 @@ export function resumeFromMapped(
     themeColors: tech.colors,
     fullName: mapped.fullName,
     headline: polishHeadline(mapped.headline, tech.name, mapped.expertise),
+    summary: mapped.summary,
     contact: mapped.contact,
     expertise: mapped.expertise,
+    tools: mapped.tools || [],
     certifications: mapped.certifications,
     languages: mapped.languages,
     workExperience,
+    projects: mapped.projects || [],
     education: mapped.education,
+    awards: mapped.awards || [],
+    interests: mapped.interests || [],
     additionalWorks: mapped.additionalWorks,
     notes: mapped.notes,
     agentLog: [
@@ -95,6 +101,25 @@ export function resumeFromMapped(
       `Applied proprietary Design DNA + content polish`,
     ],
     ...extras,
+  };
+
+  return {
+    ...base,
+    sectionLayout:
+      extras?.sectionLayout ||
+      buildDefaultSectionLayout({
+        summary: base.summary,
+        expertise: base.expertise,
+        tools: base.tools,
+        workExperience: base.workExperience,
+        projects: base.projects,
+        education: base.education,
+        certifications: base.certifications,
+        languages: base.languages,
+        awards: base.awards,
+        interests: base.interests,
+        additionalWorks: base.additionalWorks,
+      }),
   };
 }
 

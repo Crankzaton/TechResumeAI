@@ -52,6 +52,38 @@ export interface AdditionalWork {
   description: string;
 }
 
+export interface ProjectItem {
+  name: string;
+  description: string;
+  link?: string;
+}
+
+export type SectionKind =
+  | "header"
+  | "summary"
+  | "impact"
+  | "skills"
+  | "tools"
+  | "experience"
+  | "projects"
+  | "education"
+  | "certs"
+  | "languages"
+  | "awards"
+  | "interests"
+  | "additional"
+  | "custom";
+
+/** Editable composition — order, titles, visibility, duplicates */
+export interface ResumeSectionConfig {
+  id: string;
+  kind: SectionKind;
+  title: string;
+  visible: boolean;
+  /** Freeform body for custom / duplicated text blocks */
+  customBody?: string;
+}
+
 export interface Technology {
   id: string;
   name: string;
@@ -149,13 +181,20 @@ export interface ResumeData {
   formConnectionId?: string;
   fullName: string;
   headline?: string;
+  summary?: string;
   contact: ContactInfo;
   expertise: string[];
+  tools?: string[];
   certifications: Certification[];
   languages: Language[];
   workExperience: WorkExperience[];
+  projects?: ProjectItem[];
   education: Education[];
+  awards?: string[];
+  interests?: string[];
   additionalWorks: AdditionalWork[];
+  /** Visual section composition for WYSIWYG editing */
+  sectionLayout?: ResumeSectionConfig[];
   notes?: string;
   agentLog?: string[];
   emailedAt?: string;

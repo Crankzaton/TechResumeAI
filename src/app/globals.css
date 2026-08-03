@@ -852,6 +852,120 @@ textarea {
   max-width: 420px;
 }
 
+.intake-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.intake-sub {
+  margin: 1.25rem 0 0.55rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--moss);
+}
+
+.preview-edit-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  align-items: start;
+}
+
+.preview-edit-grid.editing {
+  grid-template-columns: minmax(260px, 320px) 1fr;
+  gap: 0.5rem;
+  padding: 0 1rem 2rem;
+}
+
+.section-editor {
+  position: sticky;
+  top: 72px;
+  max-height: calc(100vh - 90px);
+  overflow: auto;
+  padding: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(10px);
+}
+
+.section-editor-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-editor h3 {
+  margin: 0;
+  font-family: var(--font-display), Georgia, serif;
+}
+
+.section-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.section-list li button {
+  width: 100%;
+  text-align: left;
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: 0 0.45rem;
+  border: 1px solid transparent;
+  background: rgba(12, 18, 32, 0.03);
+  border-radius: 10px;
+  padding: 0.45rem 0.55rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+.section-list li button em {
+  grid-column: 2;
+  font-style: normal;
+  font-size: 0.72rem;
+  color: var(--steel);
+}
+
+.section-list li.active button {
+  border-color: var(--moss);
+  background: rgba(31, 111, 91, 0.1);
+}
+
+.section-detail {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+@media (max-width: 960px) {
+  .preview-edit-grid.editing {
+    grid-template-columns: 1fr;
+  }
+  .section-editor {
+    position: relative;
+    top: 0;
+    max-height: none;
+  }
+}
+
 @media (max-width: 900px) {
   .stat-grid,
   .tech-admin-card,

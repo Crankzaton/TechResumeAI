@@ -1462,3 +1462,243 @@
   margin-left: 4px;
   margin-right: 12px;
 }
+
+/* =========================================================
+   Composable resume + layout accent skins
+   ========================================================= */
+
+.tpl.composable {
+  padding: 18px 20px 22px;
+  position: relative;
+  min-height: 297mm;
+}
+
+.composable-motif {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 150px;
+  opacity: 0.35;
+  pointer-events: none;
+  mask-image: linear-gradient(180deg, #000, transparent);
+}
+
+.composable-spine {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+}
+
+.composable-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.compose-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  padding-bottom: 12px;
+  border-bottom: 2px solid color-mix(in srgb, var(--r-accent) 50%, transparent);
+  flex-wrap: wrap;
+}
+
+.compose-kicker {
+  margin: 0 0 4px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--r-accent);
+}
+
+.compose-header h1 {
+  margin: 0;
+  font-size: 32px;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.compose-headline {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--r-muted);
+}
+
+.compose-block {
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--r-surface) 80%, transparent);
+  border-left: 3px solid var(--r-accent);
+}
+
+.compose-block h2 {
+  margin: 0 0 0.5rem;
+}
+
+.compose-summary {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--r-text);
+}
+
+.compose-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.compose-chips span {
+  padding: 5px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: var(--r-card-b);
+  color: var(--r-accent-text);
+}
+
+.compose-chips.alt span {
+  background: transparent;
+  color: var(--r-text);
+  border: 1px solid color-mix(in srgb, var(--r-accent) 45%, transparent);
+}
+
+.compose-job {
+  padding: 8px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--r-muted) 20%, transparent);
+}
+
+.compose-job:last-child {
+  border-bottom: none;
+}
+
+.compose-job-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.compose-job-top span {
+  color: var(--r-accent);
+  font-weight: 600;
+}
+
+.compose-job-top em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--r-muted);
+  white-space: nowrap;
+}
+
+.compose-job p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--r-muted);
+}
+
+.compose-edu {
+  margin-bottom: 8px;
+}
+
+.compose-edu strong {
+  display: block;
+  font-size: 13px;
+}
+
+.compose-edu p,
+.compose-edu span {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--r-muted);
+}
+
+.compose-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.compose-list li {
+  padding: 4px 0;
+  border-bottom: 1px dashed color-mix(in srgb, var(--r-muted) 25%, transparent);
+  font-size: 12.5px;
+}
+
+.compose-section.is-editable {
+  cursor: pointer;
+  outline: 1px dashed transparent;
+  transition: outline-color 0.15s ease;
+}
+
+.compose-section.is-editable:hover {
+  outline-color: color-mix(in srgb, var(--r-accent) 55%, transparent);
+}
+
+.compose-section.is-selected {
+  outline: 2px solid var(--r-accent);
+  background: color-mix(in srgb, var(--r-accent) 8%, transparent);
+}
+
+.compose-chrome {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--r-accent);
+  margin-bottom: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.compose-chrome em {
+  font-style: normal;
+  color: var(--r-muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.tpl.composable .dna-impact {
+  margin: 0;
+}
+
+.tpl.composable.skin-horizon .compose-header {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), 0 100%);
+  background: linear-gradient(90deg, var(--r-sidebar), color-mix(in srgb, var(--r-accent) 18%, var(--r-bg)));
+  padding: 16px;
+  margin: -6px -8px 4px;
+}
+
+.tpl.composable.skin-atelier .compose-header h1 {
+  font-size: 40px;
+}
+
+.tpl.composable.skin-mosaic .compose-block {
+  border: 1px solid color-mix(in srgb, var(--r-muted) 25%, transparent);
+  border-left-width: 3px;
+}
+
+.tpl.composable.skin-signal .compose-header {
+  background: linear-gradient(105deg, var(--r-sidebar), color-mix(in srgb, var(--r-accent) 22%, var(--r-sidebar)));
+  padding: 16px;
+  margin: -6px -8px 6px;
+  border-bottom: 4px solid var(--r-accent);
+}
+
+.tpl.composable.layout-cloud-blue .compose-kicker::after {
+  content: " · Lightning";
+}
+
+.tpl.composable.layout-terminal .compose-header h1 {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 26px;
+}
+
+.tpl.composable.layout-terminal .compose-kicker::before {
+  content: "> ";
+}
