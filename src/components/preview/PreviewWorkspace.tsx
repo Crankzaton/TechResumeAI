@@ -4,10 +4,27 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ResumeRenderer } from "@/components/resumes/ResumeRenderer";
 import { LAYOUT_OPTIONS } from "@/lib/default-technologies";
-import { colorVariant, nextLayout } from "@/lib/design-variants";
-import type { LayoutStyle, ResumeData, Technology } from "@/lib/types";
+import {
+  colorVariant,
+  DESIGN_TEMPLATES,
+  nextDesignTemplate,
+  nextLayout,
+} from "@/lib/design-variants";
+import type {
+  DesignTemplateId,
+  LayoutStyle,
+  ResumeData,
+  Technology,
+} from "@/lib/types";
 
 const OTHER = "__other__";
+
+function templateMeta(id?: DesignTemplateId) {
+  return (
+    DESIGN_TEMPLATES.find((t) => t.id === (id || "classic")) ||
+    DESIGN_TEMPLATES[0]
+  );
+}
 
 export function PreviewWorkspace({
   resume: initial,
@@ -34,6 +51,9 @@ export function PreviewWorkspace({
     initialTech ? "" : initial.technologyName,
   );
   const [layout, setLayout] = useState<LayoutStyle>(initial.layout);
+  const [designTemplate, setDesignTemplate] = useState<DesignTemplateId>(
+    initial.designTemplate || "classic",
+  );
   const [variantIndex, setVariantIndex] = useState(0);
   const [resume, setResume] = useState(initial);
 
@@ -56,6 +76,7 @@ export function PreviewWorkspace({
           ? otherName.trim() || "Custom"
           : selectedTech?.name || resume.technologyName,
       layout,
+      designTemplate,
       themeColors: colors,
     };
   }, [
@@ -64,17 +85,21 @@ export function PreviewWorkspace({
     techKey,
     otherName,
     layout,
+    designTemplate,
     variantIndex,
     technologies,
   ]);
+
+  const tpl = templateMeta(designTemplate);
 
   async function persistLiveDesign(extra?: Partial<ResumeData>) {
     const payload = {
       technologyId: liveResume.technologyId,
       technologyName: liveResume.technologyName,
       layout: liveResume.layout,
+      designTemplate: liveResume.designTemplate,
       themeColors: liveResume.themeColors,
-      designVersion: (resume.designVersion || 1) + (extra?.designVersion ? 0 : 0),
+      designVersion: resume.designVersion || 1,
       ...extra,
     };
     const res = await fetch(`/api/resumes/${resume.id}`, {
@@ -98,14 +123,15 @@ export function PreviewWorkspace({
   }
 
   function redesign() {
-    // Same technology — cycle colors + layout immediately (live preview)
+    // Cycle to a clearly different modular template + layout + color accent
     const used = resume.previousLayouts || [];
-    const next = nextLayout(layout, used);
-    setLayout(next);
+    const nextTpl = nextDesignTemplate(designTemplate);
+    const nextLay = nextLayout(layout, used);
+    setDesignTemplate(nextTpl);
+    setLayout(nextLay);
     setVariantIndex((v) => v + 1);
-    setMsg(
-      `Redesign preview applied (variant ${(variantIndex % 4) + 2}, ${next})`,
-    );
+    const meta = templateMeta(nextTpl);
+    setMsg(`Redesign → ${meta.name}: ${meta.pitch}`);
   }
 
   function downloadPdf() {
@@ -113,7 +139,6 @@ export function PreviewWorkspace({
       try {
         setError(null);
         await persistLiveDesign();
-        // Prefer server-generated PDF (resume only). Fallback to print view.
         const res = await fetch(`/api/resumes/${resume.id}/pdf`);
         if (!res.ok) {
           window.open(`/preview/${resume.id}/print?autoprint=1`, "_blank");
@@ -169,10 +194,14 @@ export function PreviewWorkspace({
         const saved = await persistLiveDesign({
           designVersion: (resume.designVersion || 1) + 1,
           previousLayouts: [...(resume.previousLayouts || []), resume.layout],
+          previousTemplates: [
+            ...(resume.previousTemplates || []),
+            resume.designTemplate || "classic",
+          ],
           status: "ready",
         });
         setMsg(
-          `Saved redesign ${saved.resumeNumber} v${saved.designVersion}`,
+          `Saved redesign ${saved.resumeNumber} v${saved.designVersion} · ${templateMeta(saved.designTemplate).name}`,
         );
         router.refresh();
       } catch (e) {
@@ -198,12 +227,13 @@ export function PreviewWorkspace({
         <div>
           <p className="eyebrow">
             {liveResume.resumeNumber} · v{liveResume.designVersion || 1} ·{" "}
-            {liveResume.technologyName} · {liveResume.layout}
-            {variantIndex > 0 ? ` · color variant ${variantIndex + 1}` : ""}
+            {liveResume.technologyName} · {tpl.name} · {liveResume.layout}
+            {variantIndex > 0 ? ` · color ${variantIndex + 1}` : ""}
           </p>
           <h1>{liveResume.fullName}</h1>
           <p className="meta">
-            Status: <strong>{resume.status}</strong> · Source: {resume.source}
+            Status: <strong>{resume.status}</strong> · Source: {resume.source} ·{" "}
+            {tpl.pitch}
           </p>
           {msg && <p className="form-success">{msg}</p>}
           {error && <p className="form-error">{error}</p>}
@@ -242,8 +272,9 @@ export function PreviewWorkspace({
 
           <div className="redesign-box">
             <p className="intake-hint" style={{ marginBottom: "0.4rem" }}>
-              Change technology or layout — preview updates instantly. Redesign
-              keeps the same technology but switches colors/format.
+              Redesign cycles through distinct modular templates (still
+              horizontal / recruiter-scannable). Technology and template can also
+              be set manually.
             </p>
             <div className="field-grid" style={{ marginBottom: "0.5rem" }}>
               <label>
@@ -261,7 +292,22 @@ export function PreviewWorkspace({
                 </select>
               </label>
               <label>
-                Layout
+                Design template
+                <select
+                  value={designTemplate}
+                  onChange={(e) =>
+                    setDesignTemplate(e.target.value as DesignTemplateId)
+                  }
+                >
+                  {DESIGN_TEMPLATES.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Layout accent
                 <select
                   value={layout}
                   onChange={(e) => setLayout(e.target.value as LayoutStyle)}

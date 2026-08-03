@@ -1,3 +1,11 @@
+export type DesignTemplateId =
+  | "classic"
+  | "signal"
+  | "mosaic"
+  | "horizon"
+  | "atelier"
+  | "pulse";
+
 export type LayoutStyle =
   | "platform-dark"
   | "cloud-blue"
@@ -136,6 +144,7 @@ export interface ResumeData {
   technologyId: string;
   technologyName: string;
   layout: LayoutStyle;
+  designTemplate?: DesignTemplateId;
   themeColors: Technology["colors"];
   formConnectionId?: string;
   fullName: string;
@@ -153,6 +162,7 @@ export interface ResumeData {
   emailError?: string;
   designVersion: number;
   previousLayouts?: LayoutStyle[];
+  previousTemplates?: DesignTemplateId[];
   oneDriveWebUrl?: string;
   oneDriveItemId?: string;
 }

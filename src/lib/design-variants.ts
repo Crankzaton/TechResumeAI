@@ -1,5 +1,51 @@
-import type { LayoutStyle, Technology } from "./types";
+import type { DesignTemplateId, Technology } from "./types";
+import type { LayoutStyle } from "./types";
 import { LAYOUT_OPTIONS } from "./default-technologies";
+
+export const DESIGN_TEMPLATES: {
+  id: DesignTemplateId;
+  name: string;
+  pitch: string;
+}[] = [
+  {
+    id: "classic",
+    name: "Classic Navigator",
+    pitch: "Platform sidebar + experience cards",
+  },
+  {
+    id: "signal",
+    name: "Signal Masthead",
+    pitch: "Bold header band, modular skill rails",
+  },
+  {
+    id: "mosaic",
+    name: "Mosaic Modules",
+    pitch: "Tile grid for skills & certs, clean timeline",
+  },
+  {
+    id: "horizon",
+    name: "Horizon Bands",
+    pitch: "Full-width horizontal story bands",
+  },
+  {
+    id: "atelier",
+    name: "Atelier Editorial",
+    pitch: "Large type, asymmetric modular columns",
+  },
+  {
+    id: "pulse",
+    name: "Pulse Rail",
+    pitch: "Accent spine with stacked content modules",
+  },
+];
+
+export function nextDesignTemplate(
+  current?: DesignTemplateId,
+): DesignTemplateId {
+  const order = DESIGN_TEMPLATES.map((t) => t.id);
+  const idx = current ? order.indexOf(current) : -1;
+  return order[(idx + 1) % order.length];
+}
 
 /** Alternate color palettes derived from a technology's base colors. */
 export function colorVariant(

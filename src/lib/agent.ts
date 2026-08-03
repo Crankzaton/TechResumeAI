@@ -13,6 +13,7 @@ import { sendResumeReadyEmail } from "./email";
 import { saveResumeToOneDrive } from "./onedrive";
 import { normalizeFormBody } from "./map-form";
 import type {
+  DesignTemplateId,
   LayoutStyle,
   ResumeData,
   ResumeInput,
@@ -20,6 +21,17 @@ import type {
 } from "./types";
 import { SAMPLE_PROFILES } from "./sample-profiles";
 import { LAYOUT_OPTIONS } from "./default-technologies";
+import { DESIGN_TEMPLATES, nextDesignTemplate } from "./design-variants";
+
+function pickStarterTemplate(seed: string): DesignTemplateId {
+  // Prefer creative modular templates for first impression
+  const creative = DESIGN_TEMPLATES.filter((t) => t.id !== "classic").map(
+    (t) => t.id,
+  );
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = (hash + seed.charCodeAt(i) * (i + 3)) % 997;
+  return creative[hash % creative.length];
+}
 
 /**
  * Technology from the Google Form field wins.
@@ -60,6 +72,7 @@ export function resumeFromMapped(
     technologyId: tech.id,
     technologyName: tech.name,
     layout: tech.layout,
+    designTemplate: pickStarterTemplate(`${tech.id}:${mapped.fullName}`),
     themeColors: tech.colors,
     fullName: mapped.fullName,
     headline: mapped.headline,
@@ -227,7 +240,7 @@ export async function runResumeAgent(options: {
       agentLog: [
         ...(resume.agentLog || []),
         `Resume ${resume.resumeNumber} generated`,
-        `Theme: ${tech.name} / ${tech.layout}`,
+        `Theme: ${tech.name} / ${resume.designTemplate || "classic"} / ${tech.layout}`,
       ],
     })) || resume;
 
@@ -310,30 +323,38 @@ export async function redesignResume(options: {
   if (!tech) throw new Error("Technology not found for redesign");
 
   const used = existing.previousLayouts || [];
+  const usedTemplates = existing.previousTemplates || [];
   const layout =
     options.layout ||
     (options.technology ? tech.layout : nextLayout(existing.layout, used));
+  const designTemplate = nextDesignTemplate(existing.designTemplate);
 
   const previousLayouts = [...used, existing.layout].slice(-8);
+  const previousTemplates = [
+    ...usedTemplates,
+    existing.designTemplate || "classic",
+  ].slice(-8);
 
   let resume =
     (await updateResume(existing.id, {
       technologyId: tech.id,
       technologyName: tech.name,
       layout,
+      designTemplate,
       themeColors: tech.colors,
       designVersion: (existing.designVersion || 1) + 1,
       previousLayouts,
+      previousTemplates,
       status: "ready",
       agentLog: [
         ...(existing.agentLog || []),
-        `Redesign v${(existing.designVersion || 1) + 1}: ${tech.name} / ${layout}`,
+        `Redesign v${(existing.designVersion || 1) + 1}: ${tech.name} / ${designTemplate} / ${layout}`,
       ],
     })) || existing;
 
   await addAgentEvent({
     type: "redesign",
-    message: `Redesigned ${resume.resumeNumber} → ${tech.name} / ${layout} (v${resume.designVersion})`,
+    message: `Redesigned ${resume.resumeNumber} → ${tech.name} / ${designTemplate} / ${layout} (v${resume.designVersion})`,
     resumeId: resume.id,
     technologyId: tech.id,
   });
